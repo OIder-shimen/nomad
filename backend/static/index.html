@@ -1,0 +1,4829 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Nomad — AI 驱动的中国旅游智能推荐平台。基于深度神经网络的个性化推荐引擎，融合气候、预算、交通、客流等多维度数据，为你发现最匹配的中国目的地。">
+<title>Nomad — AI 中国旅游智能推荐</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500&family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   CSS CUSTOM PROPERTIES & RESET
+   ============================================================ */
+:root {
+  /* Core palette */
+  --bg-deep: #080c14;
+  --bg-primary: #0d1220;
+  --bg-surface: #141b2d;
+  --bg-elevated: #1a2340;
+  --bg-glass: rgba(20, 27, 45, 0.65);
+  --bg-glass-hover: rgba(26, 35, 64, 0.75);
+
+  /* Accents */
+  --gold: #c9a44b;
+  --gold-bright: #e2c06e;
+  --gold-dim: #8b6f2e;
+  --copper: #c97a5b;
+  --copper-bright: #e89574;
+  --amber: #d4913e;
+  --sage: #7ba58d;
+  --sage-bright: #9cc5ad;
+
+  /* Text */
+  --text-primary: #e8e5df;
+  --text-secondary: #a09b93;
+  --text-muted: #6b6560;
+  --text-inverse: #0d1220;
+
+  /* Borders */
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-medium: rgba(255, 255, 255, 0.1);
+  --border-gold: rgba(201, 164, 75, 0.3);
+  --border-gold-bright: rgba(201, 164, 75, 0.5);
+
+  /* Shadows */
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.4);
+  --shadow-elevated: 0 8px 40px rgba(0, 0, 0, 0.6);
+  --shadow-gold: 0 0 60px rgba(201, 164, 75, 0.08);
+
+  /* Typography */
+  --font-display: 'Playfair Display', Georgia, 'Times New Roman', serif;
+  --font-body: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'DM Mono', 'Courier New', monospace;
+
+  /* Spacing */
+  --space-unit: 4px;
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+
+  /* Transitions */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-back: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-spring: cubic-bezier(0.22, 1.2, 0.36, 1);
+  --duration-fast: 150ms;
+  --duration-normal: 300ms;
+  --duration-slow: 600ms;
+  --duration-reveal: 800ms;
+}
+
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  line-height: 1.6;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* Subtle grain texture overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 256px 256px;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-deep); }
+::-webkit-scrollbar-thumb {
+  background: var(--bg-elevated);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--border-medium); }
+
+/* ============================================================
+   NAVIGATION
+   ============================================================ */
+.nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  padding: 16px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: background var(--duration-normal), backdrop-filter var(--duration-normal), box-shadow var(--duration-normal);
+}
+
+.nav.scrolled {
+  background: rgba(8, 12, 20, 0.8);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: 0 1px 0 var(--border-subtle);
+}
+
+.nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  text-decoration: none;
+}
+
+.nav-logo-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, var(--gold), var(--copper));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  color: var(--text-inverse);
+  font-weight: 800;
+}
+
+.nav-links {
+  display: flex;
+  gap: 32px;
+  list-style: none;
+}
+
+.nav-links a {
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  transition: color var(--duration-fast);
+  position: relative;
+}
+
+.nav-links a::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  width: 0;
+  height: 1px;
+  background: var(--gold);
+  transition: width var(--duration-normal) var(--ease-out-expo);
+}
+
+.nav-links a:hover { color: var(--text-primary); }
+.nav-links a:hover::after { width: 100%; }
+.nav-links a.active { color: var(--gold); }
+.nav-links a.active::after { width: 100%; }
+
+.nav-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.nav-live-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+}
+
+.live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--sage);
+  animation: pulse-dot 2s ease-in-out infinite;
+  box-shadow: 0 0 8px rgba(123, 165, 141, 0.6);
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.3); }
+}
+
+.btn {
+  padding: 10px 24px;
+  border-radius: 24px;
+  border: none;
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--duration-normal) var(--ease-out-expo);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--gold), #b8913a);
+  color: var(--text-inverse);
+  box-shadow: 0 4px 20px rgba(201, 164, 75, 0.2);
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 30px rgba(201, 164, 75, 0.35);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--border-medium);
+}
+
+.btn-ghost:hover {
+  background: var(--bg-surface);
+  border-color: var(--border-gold);
+}
+
+.btn-sm {
+  padding: 6px 16px;
+  font-size: 0.75rem;
+  border-radius: 20px;
+}
+
+.btn-icon {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--duration-fast);
+}
+
+.btn-icon:hover {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border-color: var(--border-medium);
+}
+
+/* ============================================================
+   HERO SECTION
+   ============================================================ */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  position: relative;
+  padding: 120px 80px 80px;
+  overflow: hidden;
+}
+
+/* Animated map background */
+.hero-map {
+  position: absolute;
+  inset: 0;
+  opacity: 0.12;
+  pointer-events: none;
+}
+
+.hero-map svg {
+  width: 100%;
+  height: 100%;
+}
+
+.map-dot {
+  fill: var(--gold);
+  animation: map-pulse 3s ease-in-out infinite;
+}
+
+.map-dot:nth-child(1) { animation-delay: 0s; }
+.map-dot:nth-child(2) { animation-delay: 0.4s; }
+.map-dot:nth-child(3) { animation-delay: 0.8s; }
+.map-dot:nth-child(4) { animation-delay: 1.2s; }
+.map-dot:nth-child(5) { animation-delay: 1.6s; }
+.map-dot:nth-child(6) { animation-delay: 2.0s; }
+.map-dot:nth-child(7) { animation-delay: 2.4s; }
+.map-dot:nth-child(8) { animation-delay: 0.2s; }
+.map-dot:nth-child(9) { animation-delay: 0.6s; }
+.map-dot:nth-child(10) { animation-delay: 1.0s; }
+
+@keyframes map-pulse {
+  0%, 100% { opacity: 0.3; r: 2; }
+  50% { opacity: 1; r: 4; }
+}
+
+.map-line {
+  stroke: var(--gold-dim);
+  stroke-width: 0.5;
+  stroke-dasharray: 3 6;
+  animation: line-drift 8s linear infinite;
+  opacity: 0.4;
+}
+
+@keyframes line-drift {
+  0% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: -18; }
+}
+
+/* Floating particles */
+.hero-particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.particle {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: var(--gold);
+  border-radius: 50%;
+  animation: float-up linear infinite;
+  opacity: 0;
+}
+
+@keyframes float-up {
+  0% { transform: translateY(0) scale(1); opacity: 0; }
+  10% { opacity: 0.8; }
+  90% { opacity: 0.2; }
+  100% { transform: translateY(-100vh) scale(0.5); opacity: 0; }
+}
+
+.hero-content {
+  position: relative;
+  z-index: 2;
+  max-width: 720px;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  border-radius: 20px;
+  background: var(--bg-glass);
+  border: 1px solid var(--border-gold);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--gold-bright);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 32px;
+  animation: fade-in-up 0.8s var(--ease-out-expo) 0.2s both;
+}
+
+.hero-badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--gold-bright);
+  animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+.hero-title {
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 6vw, 5.5rem);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.025em;
+  color: var(--text-primary);
+  margin-bottom: 24px;
+  animation: fade-in-up 0.8s var(--ease-out-expo) 0.35s both;
+}
+
+.hero-title em {
+  font-style: italic;
+  color: var(--gold);
+  position: relative;
+}
+
+.hero-title em::after {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--gold);
+  opacity: 0.3;
+}
+
+.hero-subtitle {
+  font-size: 1.125rem;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  margin-bottom: 40px;
+  max-width: 500px;
+  animation: fade-in-up 0.8s var(--ease-out-expo) 0.5s both;
+}
+
+.hero-search {
+  display: flex;
+  gap: 12px;
+  animation: fade-in-up 0.8s var(--ease-out-expo) 0.65s both;
+}
+
+.hero-search-input {
+  flex: 1;
+  max-width: 420px;
+  padding: 16px 24px;
+  border-radius: 28px;
+  border: 1px solid var(--border-medium);
+  background: var(--bg-glass);
+  backdrop-filter: blur(12px);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.9375rem;
+  transition: all var(--duration-normal);
+  outline: none;
+}
+
+.hero-search-input:focus {
+  border-color: var(--border-gold-bright);
+  background: var(--bg-glass-hover);
+  box-shadow: 0 0 0 4px rgba(201, 164, 75, 0.08);
+}
+
+.hero-search-input::placeholder {
+  color: var(--text-muted);
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Hero stats row */
+.hero-stats {
+  display: flex;
+  gap: 48px;
+  margin-top: 60px;
+  animation: fade-in-up 0.8s var(--ease-out-expo) 0.8s both;
+}
+
+.hero-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hero-stat-value {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.hero-stat-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* Scroll indicator */
+.scroll-indicator {
+  position: absolute;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  animation: fade-in-up 0.8s var(--ease-out-expo) 1s both;
+}
+
+.scroll-indicator span {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+.scroll-line {
+  width: 1px;
+  height: 40px;
+  background: linear-gradient(to bottom, var(--text-muted), transparent);
+  animation: scroll-pulse 2s ease-in-out infinite;
+}
+
+@keyframes scroll-pulse {
+  0%, 100% { opacity: 0.4; transform: scaleY(1); }
+  50% { opacity: 1; transform: scaleY(1.3); transform-origin: top; }
+}
+
+/* ============================================================
+   SECTION COMMONS
+   ============================================================ */
+.section {
+  padding: 100px 80px;
+  position: relative;
+}
+
+/* ============================================================
+   CONTAINER
+   ============================================================ */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.section-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 48px;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.section-eyebrow {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--gold);
+  font-weight: 600;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-eyebrow::before {
+  content: '';
+  width: 20px;
+  height: 1px;
+  background: var(--gold);
+}
+
+.section-title {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 3.5vw, 3rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+/* ============================================================
+   TRENDING DESTINATIONS
+   ============================================================ */
+.trending-scroll {
+  display: flex;
+  gap: 20px;
+  overflow-x: auto;
+  padding-bottom: 20px;
+  scroll-snap-type: x mandatory;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.trending-scroll::-webkit-scrollbar { display: none; }
+
+.destination-card {
+  min-width: 320px;
+  scroll-snap-align: start;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  position: relative;
+  cursor: pointer;
+  transition: transform var(--duration-normal) var(--ease-out-expo), box-shadow var(--duration-normal);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+}
+
+.destination-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-elevated), 0 0 0 1px var(--border-gold);
+}
+
+.card-image {
+  height: 200px;
+  position: relative;
+  overflow: hidden;
+  transition: background-image 0.6s var(--ease-out-expo);
+}
+
+.card-image-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 4rem;
+  color: rgba(255,255,255,0.06);
+  font-family: var(--font-display);
+}
+
+.card-image-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(8,12,20,0.9) 0%, transparent 60%);
+}
+
+.card-live-badge {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(8px);
+  font-size: 0.6875rem;
+  font-family: var(--font-mono);
+  color: var(--sage-bright);
+  border: 1px solid rgba(123, 165, 141, 0.2);
+}
+
+.card-live-badge .live-dot {
+  width: 5px;
+  height: 5px;
+}
+
+.card-body {
+  padding: 20px 24px;
+}
+
+.card-location {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.card-country {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.card-city {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.card-meta {
+  display: flex;
+  gap: 20px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.card-meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.card-meta-value {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+.card-meta-label {
+  font-size: 0.625rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ============================================================
+   TRIP PLANNER
+   ============================================================ */
+.planner-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  min-height: 600px;
+}
+
+/* Search Panel */
+.planner-search {
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.planner-search-label {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.search-box {
+  display: flex;
+  gap: 10px;
+}
+
+.search-box input {
+  flex: 1;
+  padding: 12px 18px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  outline: none;
+  transition: border-color var(--duration-fast);
+}
+
+.search-box input:focus {
+  border-color: var(--border-gold);
+}
+
+.search-results {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.search-result-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-radius: var(--radius-md);
+  background: var(--bg-deep);
+  cursor: pointer;
+  transition: all var(--duration-fast);
+  border: 1px solid transparent;
+}
+
+.search-result-item:hover {
+  background: var(--bg-elevated);
+  border-color: var(--border-subtle);
+}
+
+.search-result-item.added {
+  border-color: var(--border-gold);
+  background: rgba(201, 164, 75, 0.05);
+}
+
+.search-result-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.search-result-name {
+  font-weight: 600;
+  font-size: 0.9375rem;
+}
+
+.search-result-country {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.search-result-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+}
+
+.btn-add {
+  padding: 6px 18px;
+  border-radius: 20px;
+  border: 1px solid var(--border-gold);
+  background: transparent;
+  color: var(--gold);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--duration-fast);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.btn-add:hover {
+  background: var(--gold);
+  color: var(--text-inverse);
+}
+
+.btn-add.added {
+  background: var(--gold);
+  color: var(--text-inverse);
+}
+
+/* Itinerary Panel */
+.planner-itinerary {
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+}
+
+.itinerary-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.itinerary-title {
+  font-family: var(--font-display);
+  font-size: 1.375rem;
+  font-weight: 600;
+}
+
+.itinerary-count {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  padding: 4px 12px;
+  background: var(--bg-deep);
+  border-radius: 12px;
+}
+
+.itinerary-timeline {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  position: relative;
+  padding-left: 28px;
+}
+
+/* Vertical timeline line */
+.itinerary-timeline::before {
+  content: '';
+  position: absolute;
+  left: 11px;
+  top: 8px;
+  bottom: 8px;
+  width: 1px;
+  background: var(--border-subtle);
+}
+
+.itinerary-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  color: var(--text-muted);
+  text-align: center;
+  gap: 12px;
+  padding: 40px;
+}
+
+.itinerary-empty-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--bg-deep);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  opacity: 0.5;
+}
+
+.itinerary-stop {
+  position: relative;
+  padding: 16px 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  animation: fade-in-up 0.4s var(--ease-out-expo) both;
+  transition: background var(--duration-fast);
+  border-radius: var(--radius-sm);
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+.itinerary-stop:hover {
+  background: var(--bg-deep);
+}
+
+/* Timeline dot */
+.itinerary-stop::before {
+  content: attr(data-index);
+  position: absolute;
+  left: -22px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--bg-surface);
+  border: 2px solid var(--border-medium);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.625rem;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  z-index: 1;
+  transition: all var(--duration-fast);
+}
+
+.itinerary-stop:first-child::before {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: var(--text-inverse);
+}
+
+.itinerary-stop-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.itinerary-stop-city {
+  font-weight: 600;
+  font-size: 0.9375rem;
+}
+
+.itinerary-stop-dates {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.stay-days-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.stay-btn {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-deep);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  padding: 0;
+  transition: all var(--duration-fast);
+}
+.stay-btn:hover {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border-color: var(--border-gold);
+}
+.stay-days-num {
+  font-weight: 600;
+  color: var(--gold-bright);
+  min-width: 16px;
+  text-align: center;
+}
+
+.itinerary-stop-weather {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  min-width: 90px;
+}
+
+.weather-icon {
+  font-size: 1.25rem;
+}
+
+.itinerary-stop-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.itinerary-stop-actions button {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-deep);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--duration-fast);
+}
+
+.itinerary-stop-actions button:hover {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border-color: var(--border-medium);
+}
+
+.itinerary-stop-actions button.remove:hover {
+  background: rgba(201, 122, 91, 0.15);
+  border-color: rgba(201, 122, 91, 0.4);
+  color: var(--copper);
+}
+
+/* Trip Summary */
+.itinerary-summary {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.summary-label {
+  font-size: 0.625rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.summary-value {
+  font-family: var(--font-mono);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.summary-value.gold {
+  color: var(--gold);
+  font-weight: 600;
+}
+
+/* ============================================================
+   LIVE ACTIVITY FEED
+   ============================================================ */
+.activity-feed {
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  padding: 24px;
+  max-height: 360px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.activity-feed-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.activity-feed-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.activity-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.activity-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  animation: fade-in-up 0.4s var(--ease-out-expo) both;
+  transition: background var(--duration-fast);
+}
+
+.activity-item:hover {
+  background: var(--bg-deep);
+}
+
+.activity-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  color: var(--text-inverse);
+}
+
+.activity-content {
+  flex: 1;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.activity-content strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.activity-content .location {
+  color: var(--gold);
+  font-weight: 500;
+}
+
+.activity-time {
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   SECTION: FEATURES
+   ============================================================ */
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.feature-card {
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  padding: 32px;
+  transition: all var(--duration-normal);
+  position: relative;
+  overflow: hidden;
+}
+
+.feature-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(to right, transparent, var(--gold-dim), transparent);
+  opacity: 0;
+  transition: opacity var(--duration-normal);
+}
+
+.feature-card:hover::before { opacity: 1; }
+.feature-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card);
+}
+
+.feature-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, rgba(201,164,75,0.15), rgba(201,122,91,0.1));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  margin-bottom: 20px;
+  color: var(--gold);
+}
+
+.feature-card h3 {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.feature-card p {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+/* ============================================================
+   FOOTER
+   ============================================================ */
+.footer {
+  border-top: 1px solid var(--border-subtle);
+  padding: 48px 80px 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+
+.footer-brand {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.footer-copy {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.footer-links {
+  display: flex;
+  gap: 32px;
+  list-style: none;
+}
+
+.footer-links a {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color var(--duration-fast);
+}
+
+.footer-links a:hover { color: var(--text-primary); }
+
+/* ============================================================
+   TOAST NOTIFICATION
+   ============================================================ */
+.toast {
+  position: fixed;
+  bottom: 32px;
+  right: 32px;
+  padding: 14px 24px;
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-gold);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  z-index: 200;
+  animation: toast-in 0.4s var(--ease-out-back), toast-out 0.3s var(--ease-out-expo) 2.5s forwards;
+  box-shadow: var(--shadow-elevated);
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(16px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes toast-out {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(-8px) scale(0.95); }
+}
+
+/* ============================================================
+   API INTEGRATION STYLES
+   ============================================================ */
+
+/* Live data badge */
+.api-badge {
+  position: absolute;
+  top: 6px;
+  left: 8px;
+  font-size: 0.5rem;
+  z-index: 2;
+}
+.api-badge.live {
+  color: var(--sage-bright);
+  animation: pulse-dot 2s ease-in-out infinite;
+  filter: drop-shadow(0 0 4px rgba(123, 165, 141, 0.6));
+}
+
+/* AQI badge */
+.aqi-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+.aqi-badge.good  { background: rgba(123,165,141,0.12); color: #7ba58d; }
+.aqi-badge.moderate { background: rgba(201,164,75,0.12); color: #c9a44b; }
+.aqi-badge.light  { background: rgba(212,145,62,0.12); color: #d4913e; }
+.aqi-badge.bad   { background: rgba(201,122,91,0.12); color: #c97a5b; }
+
+/* Unsplash attribution */
+.unsplash-attr {
+  position: absolute;
+  bottom: 8px;
+  left: 10px;
+  font-size: 0.5625rem;
+  color: rgba(255,255,255,0.45);
+  z-index: 3;
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+  pointer-events: none;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+}
+
+
+/* Settings modal */
+.settings-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(4px);
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fade-in 0.3s var(--ease-out-expo);
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.settings-modal {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-xl);
+  padding: 36px;
+  width: 90%;
+  max-width: 480px;
+  box-shadow: var(--shadow-elevated), 0 0 80px rgba(201, 164, 75, 0.06);
+  animation: modal-in 0.4s var(--ease-out-back);
+}
+
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(20px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.settings-modal h3 {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.settings-modal p {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  margin-bottom: 24px;
+}
+
+.settings-field {
+  margin-bottom: 18px;
+}
+
+.settings-field label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.settings-field label .status {
+  font-size: 0.625rem;
+  font-weight: 500;
+  text-transform: none;
+}
+
+.settings-field label .status.configured {
+  color: var(--sage);
+}
+
+.settings-field label .status.missing {
+  color: var(--copper);
+}
+
+.settings-field input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  outline: none;
+  transition: border-color var(--duration-fast);
+}
+
+.settings-field input:focus {
+  border-color: var(--border-gold);
+}
+
+.settings-field .hint {
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.settings-field .hint a {
+  color: var(--gold);
+  text-decoration: none;
+}
+
+.settings-field .hint a:hover {
+  text-decoration: underline;
+}
+
+.settings-modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 28px;
+}
+
+/* Attractions section */
+.attractions-panel {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.attractions-title {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.attraction-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.attraction-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--bg-deep);
+  border-radius: var(--radius-sm);
+  transition: all var(--duration-fast);
+  border: 1px solid transparent;
+}
+
+.attraction-card:hover {
+  border-color: var(--border-subtle);
+  background: var(--bg-elevated);
+}
+
+.attraction-index {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6875rem;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.attraction-info {
+  flex: 1;
+}
+
+.attraction-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.attraction-category {
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+}
+
+.attraction-distance {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* Nav settings gear */
+.nav-settings-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--duration-fast);
+}
+
+.nav-settings-btn:hover {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border-color: var(--border-medium);
+}
+
+/* Hero badge link styles */
+.hero-badge .api-source {
+  color: var(--sage);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* ============================================================
+   PERSONALIZATION QUIZ
+   ============================================================ */
+.quiz-container {
+  animation: fade-in-up 0.8s var(--ease-out-expo) 0.65s both;
+}
+
+.quiz-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 16px;
+  align-items: center;
+}
+
+.quiz-label {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  font-weight: 600;
+  min-width: 60px;
+}
+
+/* Budget slider */
+.quiz-slider-group {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1;
+  min-width: 260px;
+}
+
+.quiz-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--bg-elevated);
+  outline: none;
+  cursor: pointer;
+}
+
+.quiz-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--gold);
+  cursor: pointer;
+  box-shadow: 0 0 12px rgba(201, 164, 75, 0.4);
+  transition: transform var(--duration-fast);
+}
+
+.quiz-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.quiz-slider-value {
+  font-family: var(--font-mono);
+  font-size: 0.9375rem;
+  color: var(--gold);
+  font-weight: 600;
+  min-width: 70px;
+  text-align: right;
+}
+
+/* Interest tag chips */
+.interest-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex: 1;
+}
+
+.interest-chip {
+  padding: 6px 16px;
+  border-radius: 20px;
+  border: 1px solid var(--border-medium);
+  background: var(--bg-glass);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out-expo);
+  user-select: none;
+  white-space: nowrap;
+}
+
+.interest-chip:hover {
+  border-color: var(--border-gold);
+  color: var(--text-primary);
+  background: var(--bg-glass-hover);
+}
+
+.interest-chip.selected {
+  background: rgba(201, 164, 75, 0.15);
+  border-color: var(--gold);
+  color: var(--gold-bright);
+  box-shadow: 0 0 16px rgba(201, 164, 75, 0.1);
+}
+
+/* Travel style selector */
+.style-selector {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.style-btn {
+  padding: 7px 18px;
+  border-radius: 20px;
+  border: 1px solid var(--border-medium);
+  background: var(--bg-glass);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out-expo);
+  white-space: nowrap;
+}
+
+.style-btn:hover {
+  border-color: var(--border-gold);
+  color: var(--text-primary);
+}
+
+.style-btn.selected {
+  background: rgba(201, 122, 91, 0.15);
+  border-color: var(--copper);
+  color: var(--copper-bright);
+}
+
+/* Climate selector */
+.climate-selector {
+  display: flex;
+  gap: 8px;
+}
+
+.climate-btn {
+  padding: 6px 16px;
+  border-radius: 20px;
+  border: 1px solid var(--border-medium);
+  background: var(--bg-glass);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out-expo);
+}
+
+.climate-btn:hover { border-color: var(--border-sage, var(--sage)); color: var(--sage-bright); }
+.climate-btn.selected { background: rgba(123, 165, 141, 0.15); border-color: var(--sage); color: var(--sage-bright); }
+
+/* AI Recommend button */
+.btn-ai-recommend {
+  padding: 16px 36px;
+  border-radius: 28px;
+  border: none;
+  background: linear-gradient(135deg, var(--gold) 0%, var(--copper) 100%);
+  color: var(--text-inverse);
+  font-family: var(--font-body);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--duration-normal) var(--ease-out-expo);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  box-shadow: 0 4px 28px rgba(201, 164, 75, 0.25);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-ai-recommend::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, transparent 0%, rgba(255,255,255,0.1) 50%, transparent 100%);
+  animation: btn-shimmer 2s ease-in-out infinite;
+}
+
+@keyframes btn-shimmer {
+  0%, 100% { transform: translateX(-100%); }
+  50% { transform: translateX(100%); }
+}
+
+.btn-ai-recommend:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 36px rgba(201, 164, 75, 0.4);
+}
+
+.btn-ai-recommend:active { transform: translateY(0); }
+
+.ai-sparkle {
+  font-size: 1.125rem;
+  animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+/* Quiz row vertical layout helper */
+.quiz-vstack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ============================================================
+   RECOMMENDATION RESULTS
+   ============================================================ */
+#recommendations {
+  padding: 80px 0;
+  position: relative;
+}
+
+.rec-section-header {
+  text-align: center;
+  margin-bottom: 48px;
+}
+
+.rec-section-header h2 {
+  font-family: var(--font-display);
+  font-size: 2.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.rec-section-header p {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+/* Top match hero card */
+.rec-hero-card {
+  position: relative;
+  background: linear-gradient(135deg, rgba(201,164,75,0.08) 0%, rgba(201,122,91,0.06) 100%);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-xl);
+  padding: 40px;
+  margin-bottom: 32px;
+  overflow: hidden;
+}
+
+.rec-hero-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle at 30% 20%, rgba(201,164,75,0.06) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.rec-hero-badge {
+  display: inline-block;
+  padding: 6px 16px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, var(--gold), var(--copper));
+  color: var(--text-inverse);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+
+.rec-hero-body {
+  display: flex;
+  gap: 40px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.rec-hero-info { flex: 1; min-width: 260px; }
+
+.rec-hero-city {
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.rec-hero-country {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+.rec-hero-confidence {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.rec-confidence-ring {
+  position: relative;
+  width: 56px;
+  height: 56px;
+}
+
+.rec-confidence-ring svg { transform: rotate(-90deg); }
+
+.rec-confidence-value {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--gold-bright);
+}
+
+.rec-confidence-label {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+.rec-confidence-label strong {
+  color: var(--gold);
+  font-size: 1rem;
+}
+
+.rec-hero-reasons {
+  list-style: none;
+  padding: 0;
+}
+
+.rec-hero-reasons li {
+  padding: 6px 0;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rec-hero-reasons li::before {
+  content: '✦';
+  color: var(--gold);
+  font-size: 0.625rem;
+}
+
+/* Radar chart */
+.rec-radar-wrap {
+  flex: 0 0 300px;
+  position: relative;
+}
+
+.rec-radar-wrap svg { width: 300px; height: 300px; }
+
+.rec-radar-label {
+  position: absolute;
+  font-size: 0.625rem;
+  color: var(--text-muted);
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+}
+
+/* Runner-up cards */
+.rec-runners {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  margin-bottom: 48px;
+}
+
+.rec-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  transition: all var(--duration-normal) var(--ease-out-expo);
+  cursor: pointer;
+  position: relative;
+}
+
+.rec-card:hover {
+  border-color: var(--border-medium);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card);
+}
+
+.rec-card-rank {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+}
+
+.rec-card-city {
+  font-family: var(--font-display);
+  font-size: 1.375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.rec-card-country {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.rec-card-score {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.rec-card-score-bar {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--bg-elevated);
+  overflow: hidden;
+}
+
+.rec-card-score-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--gold), var(--copper));
+  transition: width 0.6s var(--ease-out-expo);
+}
+
+.rec-card-score-num {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--gold);
+}
+
+.rec-card-reason {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.rec-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+/* Niche discovery */
+.rec-niche-section {
+  margin-bottom: 48px;
+}
+
+.rec-niche-section h3 {
+  font-family: var(--font-display);
+  font-size: 1.375rem;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.niche-badge {
+  display: inline-block;
+  padding: 3px 12px;
+  border-radius: 12px;
+  background: rgba(123, 165, 141, 0.15);
+  border: 1px solid var(--sage);
+  color: var(--sage-bright);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.rec-niche-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  margin-top: 16px;
+}
+
+/* Crowd warning */
+.crowd-warning {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: rgba(201, 122, 91, 0.12);
+  border: 1px solid rgba(201, 122, 91, 0.3);
+  color: var(--copper-bright);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  margin-left: 8px;
+}
+
+.crowd-ok {
+  background: rgba(123, 165, 141, 0.12);
+  border-color: rgba(123, 165, 141, 0.3);
+  color: var(--sage-bright);
+}
+
+/* Score breakdown bars */
+.rec-breakdown {
+  margin-top: 24px;
+}
+
+.rec-breakdown h4 {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.rec-dimension-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.rec-dim-label {
+  width: 80px;
+  font-size: 0.6875rem;
+  color: var(--text-secondary);
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.rec-dim-track {
+  flex: 1;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--bg-elevated);
+  overflow: hidden;
+}
+
+.rec-dim-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.8s var(--ease-out-expo);
+}
+
+.rec-dim-val {
+  width: 36px;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  text-align: left;
+}
+
+/* Data source attribution bar */
+.data-source-bar {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 24px 32px;
+  margin-top: 48px;
+}
+
+.data-source-bar h4 {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+.data-source-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.data-source-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--bg-deep);
+  border-radius: var(--radius-sm);
+}
+
+.data-source-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  flex-shrink: 0;
+}
+
+.data-source-icon.gov { background: rgba(201,164,75,0.15); }
+.data-source-icon.weather { background: rgba(123,165,141,0.15); }
+.data-source-icon.transport { background: rgba(107,143,191,0.15); }
+.data-source-icon.ai { background: rgba(184,124,155,0.15); }
+
+.data-source-name {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.data-source-desc {
+  font-size: 0.625rem;
+  color: var(--text-muted);
+}
+
+/* Recommendation section transitions */
+.rec-fade-in {
+  animation: fade-in-up 0.5s var(--ease-out-expo) both;
+}
+
+.rec-fade-in:nth-child(2) { animation-delay: 0.1s; }
+.rec-fade-in:nth-child(3) { animation-delay: 0.2s; }
+.rec-fade-in:nth-child(4) { animation-delay: 0.3s; }
+.rec-fade-in:nth-child(5) { animation-delay: 0.4s; }
+
+/* ============================================================
+   MOBILE NAV
+   ============================================================ */
+.nav-hamburger {
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  z-index: 200;
+}
+.nav-hamburger span {
+  display: block;
+  width: 20px;
+  height: 2px;
+  background: var(--text-primary);
+  border-radius: 1px;
+  transition: all var(--duration-normal) var(--ease-out-expo);
+}
+.nav-hamburger.open span:nth-child(1) {
+  transform: translateY(7px) rotate(45deg);
+}
+.nav-hamburger.open span:nth-child(2) { opacity: 0; }
+.nav-hamburger.open span:nth-child(3) {
+  transform: translateY(-7px) rotate(-45deg);
+}
+
+.mobile-nav-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  background: rgba(8,12,20,0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.mobile-nav-overlay.open { display: block; }
+
+.mobile-nav-drawer {
+  position: fixed;
+  top: 0;
+  right: -300px;
+  width: 280px;
+  height: 100vh;
+  z-index: 151;
+  background: var(--bg-primary);
+  border-left: 1px solid var(--border-subtle);
+  padding: 24px;
+  transition: right var(--duration-normal) var(--ease-out-expo);
+}
+.mobile-nav-drawer.open { right: 0; }
+
+.mobile-nav-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
+}
+.mobile-nav-close {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  line-height: 1;
+}
+.mobile-nav-links {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mobile-nav-links a {
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 1rem;
+  font-weight: 500;
+  display: block;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  transition: all var(--duration-fast);
+}
+.mobile-nav-links a:hover {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 1024px) {
+  .planner-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .features-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hero {
+    padding: 100px 40px 60px;
+  }
+
+  .section {
+    padding: 60px 40px;
+  }
+
+  .hero-stats {
+    gap: 32px;
+  }
+}
+
+@media (max-width: 768px) {
+  .nav {
+    padding: 12px 20px;
+  }
+
+  .nav-links {
+    display: none;
+  }
+
+  .hero {
+    padding: 80px 20px 50px;
+  }
+
+  .section {
+    padding: 40px 20px;
+  }
+
+  .hero-stats {
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  .hero-search {
+    flex-direction: column;
+  }
+
+  .hero-search-input {
+    max-width: 100%;
+  }
+
+  .footer {
+    padding: 32px 20px;
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .destination-card {
+    min-width: 270px;
+  }
+
+  .rec-hero-body {
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .rec-radar-wrap {
+    flex: 0 0 auto;
+    display: flex;
+    justify-content: center;
+  }
+
+  .rec-runners {
+    grid-template-columns: 1fr;
+  }
+
+  .data-source-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .quiz-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .container { padding: 0 16px; }
+
+  .nav-hamburger { display: flex; }
+  .nav-actions .btn { display: none; }
+
+  .quiz-slider-group {
+    min-width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  html { scroll-behavior: auto; }
+}
+</style>
+</head>
+<body>
+
+<!-- Navigation -->
+<nav class="nav" id="nav">
+  <a href="#" class="nav-logo">
+    <span class="nav-logo-icon">N</span>
+    NOMAD
+  </a>
+  <ul class="nav-links">
+    <li><a href="#discover" class="active">发现</a></li>
+    <li><a href="#planner">行程规划</a></li>
+    <li><a href="#features">特色功能</a></li>
+    <li><a href="#live">实时动态</a></li>
+  </ul>
+  <div class="nav-actions">
+    <div class="nav-live-indicator">
+      <span class="live-dot"></span>
+      <span id="onlineCount">2,847</span> 在线
+    </div>
+    <button class="nav-settings-btn" id="settingsBtn" title="账户">&#9881;</button>
+    <button class="btn btn-ghost btn-sm" id="navLoginBtn">登录</button>
+    <button class="nav-hamburger" id="navHamburger" aria-label="菜单" aria-expanded="false" aria-controls="mobileNavDrawer">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+<div class="mobile-nav-overlay" id="mobileNavOverlay"></div>
+<div class="mobile-nav-drawer" id="mobileNavDrawer">
+  <div class="mobile-nav-header">
+    <span class="nav-logo" style="font-family:var(--font-display);font-size:1.25rem;font-weight:700;color:var(--text-primary);">
+      <span class="nav-logo-icon" style="width:32px;height:32px;font-size:0.875rem;">N</span> NOMAD
+    </span>
+    <button class="mobile-nav-close" id="mobileNavClose">&times;</button>
+  </div>
+  <ul class="mobile-nav-links">
+    <li><a href="#discover">发现</a></li>
+    <li><a href="#planner">行程规划</a></li>
+    <li><a href="#features">特色功能</a></li>
+    <li><a href="#live">实时动态</a></li>
+  </ul>
+</div>
+
+<!-- Hero Section -->
+<section class="hero" id="hero">
+  <div class="hero-map">
+    <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+      <!-- Simplified world map paths -->
+      <path d="M200,200 Q300,180 400,200 Q500,220 550,200 Q600,180 700,200 Q800,220 900,200 L950,200 Q1000,200 1000,250 L1000,300 Q1000,350 950,350 L200,350 Q150,350 150,300 L150,250 Q150,200 200,200Z" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+      <path d="M300,250 Q400,230 500,250 Q600,270 700,250 Q750,240 800,250" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="1"/>
+      <path d="M250,300 Q350,280 450,300 Q550,320 650,300" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="1"/>
+      <!-- Animated dots representing live travelers -->
+      <circle class="map-dot" cx="200" cy="220" r="2.5"/>
+      <circle class="map-dot" cx="550" cy="180" r="2.5"/>
+      <circle class="map-dot" cx="700" cy="230" r="2.5"/>
+      <circle class="map-dot" cx="350" cy="200" r="2.5"/>
+      <circle class="map-dot" cx="850" cy="250" r="2.5"/>
+      <circle class="map-dot" cx="450" cy="300" r="2.5"/>
+      <circle class="map-dot" cx="150" cy="200" r="2.5"/>
+      <circle class="map-dot" cx="600" cy="320" r="2.5"/>
+      <circle class="map-dot" cx="300" cy="260" r="2.5"/>
+      <circle class="map-dot" cx="750" cy="200" r="2.5"/>
+      <!-- Flight paths -->
+      <line class="map-line" x1="200" y1="220" x2="550" y2="180"/>
+      <line class="map-line" x1="550" y1="180" x2="700" y2="230"/>
+      <line class="map-line" x1="700" y1="230" x2="350" y2="200"/>
+      <line class="map-line" x1="350" y1="200" x2="850" y2="250"/>
+      <line class="map-line" x1="450" y1="300" x2="200" y2="220"/>
+      <line class="map-line" x1="600" y1="320" x2="850" y2="250"/>
+    </svg>
+  </div>
+
+  <div class="hero-particles" id="particles"></div>
+
+  <div class="hero-content">
+    <div class="hero-badge">
+      <span class="hero-badge-dot"></span>
+      深度学习驱动 · 中国境内旅游 · 多源数据融合 · AI
+    </div>
+    <h1 class="hero-title">
+      探索最美中国<br>让 <em>AI 为你精准规划</em>
+    </h1>
+    <p class="hero-subtitle">
+      基于深度神经网络的个性化推荐引擎，融合国家统计局消费数据、文化和旅游部 A级景区名录、
+      中国气象局气候数据、交通运输部基础设施数据，为你发现最匹配的中国目的地。
+    </p>
+
+    <!-- Personalization Quiz -->
+    <div class="quiz-container">
+      <div class="quiz-row">
+        <span class="quiz-label">预算范围</span>
+        <div class="quiz-slider-group">
+          <span style="font-size:0.75rem;color:var(--text-muted);">¥500</span>
+          <input type="range" class="quiz-slider" id="budgetSlider" min="500" max="5000" step="100" value="1500">
+          <span style="font-size:0.75rem;color:var(--text-muted);">¥5,000</span>
+          <span class="quiz-slider-value" id="budgetDisplay">¥1,500/天</span>
+        </div>
+      </div>
+
+      <div class="quiz-row">
+        <span class="quiz-label">兴趣偏好</span>
+        <div class="interest-chips" id="interestChips">
+          <span class="interest-chip" data-tag="自然风光">自然风光</span>
+          <span class="interest-chip" data-tag="历史文化">历史文化</span>
+          <span class="interest-chip" data-tag="美食体验">美食体验</span>
+          <span class="interest-chip" data-tag="户外探险">户外探险</span>
+          <span class="interest-chip" data-tag="休闲度假">休闲度假</span>
+          <span class="interest-chip" data-tag="城市探索">城市探索</span>
+        </div>
+      </div>
+
+      <div class="quiz-row">
+        <span class="quiz-label">出行风格</span>
+        <div class="style-selector" id="styleSelector">
+          <button class="style-btn" data-style="背包穷游">背包穷游</button>
+          <button class="style-btn selected" data-style="舒适休闲">舒适休闲</button>
+          <button class="style-btn" data-style="奢华体验">奢华体验</button>
+          <button class="style-btn" data-style="亲子家庭">亲子家庭</button>
+        </div>
+        <span class="quiz-label" style="margin-left:20px;">气候偏好</span>
+        <div class="climate-selector" id="climateSelector">
+          <button class="climate-btn" data-climate="温暖">温暖</button>
+          <button class="climate-btn selected" data-climate="温和">温和</button>
+          <button class="climate-btn" data-climate="凉爽">凉爽</button>
+        </div>
+      </div>
+
+      <div class="quiz-row" style="margin-top:8px;">
+        <button class="btn-ai-recommend" id="btnAIRecommend">
+          <span class="ai-sparkle">&#10022;</span>
+          开始 AI 智能推荐
+        </button>
+        <span style="font-size:0.6875rem;color:var(--text-muted);margin-left:16px;">
+          基于 7 维度特征 · 12 个中国目的地 · 83 项开放数据指标
+        </span>
+      </div>
+
+      <!-- Quick manual search (kept as secondary) -->
+      <div class="quiz-row" style="margin-top:12px; padding-top:14px; border-top:1px solid var(--border-subtle);">
+        <span class="quiz-label" style="color:var(--text-muted);">或直接搜索</span>
+        <input
+          type="text"
+          class="hero-search-input"
+          placeholder="输入目的地名称..."
+          id="heroSearch"
+          autocomplete="off"
+          aria-label="搜索目的地"
+          style="max-width:280px;"
+        >
+        <button class="btn btn-ghost btn-sm" id="heroSearchBtn">搜索</button>
+      </div>
+    </div>
+
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <span class="hero-stat-value" id="statDestinations">328</span>
+        <span class="hero-stat-label">中国5A级景区</span>
+      </div>
+      <div class="hero-stat">
+        <span class="hero-stat-value" id="statTravelers">60.6亿</span>
+        <span class="hero-stat-label">年国内游客人次</span>
+      </div>
+      <div class="hero-stat">
+        <span class="hero-stat-value" id="statUpdates">实时</span>
+        <span class="hero-stat-label">多源数据融合</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="scroll-indicator">
+    <span>探索更多</span>
+    <div class="scroll-line"></div>
+  </div>
+</section>
+
+<!-- AI Recommendation Results -->
+<section class="section" id="recommendations" style="display:none;">
+  <div class="container">
+    <div class="rec-section-header">
+      <h2>AI 智能推荐结果</h2>
+      <p>基于 7 维度特征融合 · 12 个中国目的地 · 83 项开放数据指标的个性化推荐</p>
+    </div>
+
+    <!-- Top match -->
+    <div class="rec-hero-card rec-fade-in" id="recHeroCard"></div>
+
+    <!-- Runners-up -->
+    <h3 style="font-family:var(--font-display);font-size:1.25rem;color:var(--text-primary);margin-bottom:20px;">其他推荐</h3>
+    <div class="rec-runners" id="recRunners"></div>
+
+    <!-- Niche discovery -->
+    <div class="rec-niche-section" id="recNicheSection">
+      <h3><span class="niche-badge">算法挖掘</span> 小众宝藏目的地</h3>
+      <p style="font-size:0.8125rem;color:var(--text-secondary);margin-bottom:4px;">这些目的地人气不高但与您的偏好高度匹配，值得探索</p>
+      <div class="rec-niche-cards" id="recNicheCards"></div>
+    </div>
+
+    <!-- All results table -->
+    <h3 style="font-family:var(--font-display);font-size:1.25rem;color:var(--text-primary);margin-bottom:16px;">完整排名</h3>
+    <div id="recAllResults" style="display:flex;flex-direction:column;gap:10px;margin-bottom:40px;"></div>
+
+    <!-- Data source attribution -->
+    <div class="data-source-bar">
+      <h4>数据来源 & 模型说明</h4>
+      <div class="data-source-grid">
+        <div class="data-source-item">
+          <div class="data-source-icon gov">🏛</div>
+          <div>
+            <div class="data-source-name">国家统计局</div>
+            <div class="data-source-desc">消费价格指数 / 人均支出数据</div>
+          </div>
+        </div>
+        <div class="data-source-item">
+          <div class="data-source-icon gov">🏯</div>
+          <div>
+            <div class="data-source-name">文化和旅游部</div>
+            <div class="data-source-desc">A级景区名录 / 游客接待量</div>
+          </div>
+        </div>
+        <div class="data-source-item">
+          <div class="data-source-icon weather">🌤</div>
+          <div>
+            <div class="data-source-name">中国气象局 / Open-Meteo</div>
+            <div class="data-source-desc">实时气候数据 / 舒适度指数</div>
+          </div>
+        </div>
+        <div class="data-source-item">
+          <div class="data-source-icon transport">🚇</div>
+          <div>
+            <div class="data-source-name">交通运输部 / OSM Overpass</div>
+            <div class="data-source-desc">火车站/机场/公交枢纽实时数据</div>
+          </div>
+        </div>
+        <div class="data-source-item">
+          <div class="data-source-icon" style="background:rgba(107,191,143,0.15);">💨</div>
+          <div>
+            <div class="data-source-name">Open-Meteo 空气质量</div>
+            <div class="data-source-desc">PM2.5 / PM10 / AQI 实时监测</div>
+          </div>
+        </div>
+        <div class="data-source-item">
+          <div class="data-source-icon" style="background:rgba(100,149,237,0.15);">🗺</div>
+          <div>
+            <div class="data-source-name">高德地图 Web API</div>
+            <div class="data-source-desc">POI搜索 / 驾车距离 / 本地天气</div>
+          </div>
+        </div>
+        <div class="data-source-item">
+          <div class="data-source-icon" style="background:rgba(201,122,91,0.15);">📅</div>
+          <div>
+            <div class="data-source-name">国务院节假日安排</div>
+            <div class="data-source-desc">2025-2026 法定假日 · 客流预测</div>
+          </div>
+        </div>
+        <div class="data-source-item">
+          <div class="data-source-icon ai">🧠</div>
+          <div>
+            <div class="data-source-name">AI 语义分析模型</div>
+            <div class="data-source-desc">兴趣标签匹配 / 深度神经网络评分</div>
+          </div>
+        </div>
+        <div class="data-source-item">
+          <div class="data-source-icon" style="background:rgba(139,158,124,0.15);">📊</div>
+          <div>
+            <div class="data-source-name">评分引擎</div>
+            <div class="data-source-desc">7维加权融合 · Sigmoid 敏感度 · 小众发现</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Trending Destinations -->
+<section class="section" id="discover">
+  <div class="section-header">
+    <div>
+      <div class="section-eyebrow">实时热门</div>
+      <h2 class="section-title">当下最受欢迎的中国目的地</h2>
+    </div>
+    <div class="nav-live-indicator" style="padding: 8px 16px;">
+      <span class="live-dot"></span>
+      每 30 秒刷新
+    </div>
+  </div>
+
+  <div class="trending-scroll" id="trendingScroll">
+    <!-- Cards populated by JS -->
+  </div>
+</section>
+
+<!-- Trip Planner -->
+<section class="section" id="planner" style="background: var(--bg-primary);">
+  <div class="section-header">
+    <div>
+      <div class="section-eyebrow">行程规划</div>
+      <h2 class="section-title">构建你的专属旅程</h2>
+    </div>
+  </div>
+
+  <div class="planner-layout">
+    <!-- Search panel -->
+    <div class="planner-search">
+      <span class="planner-search-label">搜索目的地</span>
+      <div class="search-box">
+        <input
+          type="text"
+          id="plannerSearch"
+          placeholder="输入城市或国家名称..."
+          autocomplete="off"
+          aria-label="搜索目的地城市"
+        >
+      </div>
+      <div class="search-results" id="searchResults">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+
+    <!-- Itinerary panel -->
+    <div class="planner-itinerary" id="itineraryPanel">
+      <div class="itinerary-header">
+        <h3 class="itinerary-title">我的行程</h3>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <label style="font-size:0.75rem;color:var(--text-muted);white-space:nowrap;">
+            出发
+            <input type="date" id="tripStartDateInput"
+              style="background:var(--bg-deep);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);color:var(--text-primary);padding:4px 8px;font-family:var(--font-body);font-size:0.75rem;margin-left:4px;width:auto;">
+          </label>
+          <span class="itinerary-count" id="itineraryCount">0 站</span>
+        </div>
+      </div>
+
+      <div class="itinerary-timeline" id="itineraryTimeline">
+        <div class="itinerary-empty" id="itineraryEmpty">
+          <div class="itinerary-empty-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M12 6v6l4 2"/>
+            </svg>
+          </div>
+          <p>从左侧搜索并添加目的地<br>开始规划你的旅程</p>
+        </div>
+      </div>
+
+      <div class="itinerary-summary" id="itinerarySummary" style="display: none;">
+        <div class="summary-item">
+          <span class="summary-label">总行程</span>
+          <span class="summary-value" id="summaryDays">0 天</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">目的地</span>
+          <span class="summary-value" id="summaryStops">0 个</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">预估预算</span>
+          <span class="summary-value gold" id="summaryBudget">¥0</span>
+        </div>
+        <button class="btn btn-primary btn-sm" id="saveItinerary" style="margin-left: auto;">
+          保存行程
+        </button>
+      </div>
+
+      <!-- Attractions panel (populated by Geoapify) -->
+      <div class="attractions-panel" id="attractionsPanel" style="display: none;">
+        <div class="attractions-title">
+          &#9733; 当地热门景点
+          <span class="api-badge live" style="position:static;display:inline-block;" title="数据来源: Geoapify / OpenStreetMap">●</span>
+        </div>
+        <div class="attraction-cards" id="attractionCards"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Live Activity + Features side by side -->
+<section class="section" id="live">
+  <div class="section-header">
+    <div>
+      <div class="section-eyebrow">实时动态</div>
+      <h2 class="section-title">实时旅行动态</h2>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 32px;">
+    <div class="activity-feed">
+      <div class="activity-feed-header">
+        <span class="activity-feed-title">
+          <span class="live-dot"></span> 实时动态
+        </span>
+        <span style="font-size: 0.6875rem; color: var(--text-muted); font-family: var(--font-mono);" id="activityCount">12 条更新</span>
+      </div>
+      <div class="activity-list" id="activityList">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 24px;">
+      <div style="background: var(--bg-surface); border-radius: var(--radius-lg); border: 1px solid var(--border-subtle); padding: 24px;">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+          <div class="feature-icon" style="margin-bottom: 0;">&#9728;</div>
+          <div>
+            <h3 style="font-family: var(--font-display); font-size: 1.125rem; font-weight: 600;">实时天气追踪</h3>
+            <p style="font-size: 0.75rem; color: var(--text-muted);">行程中所有目的地的天气一目了然</p>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;" id="weatherWidgets">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <div style="background: var(--bg-surface); border-radius: var(--radius-lg); border: 1px solid var(--border-subtle); padding: 24px;">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+          <div class="feature-icon" style="margin-bottom: 0;">&#9830;</div>
+          <div>
+            <h3 style="font-family: var(--font-display); font-size: 1.125rem; font-weight: 600;">消费水平与当地信息</h3>
+            <p style="font-size: 0.75rem; color: var(--text-muted);">随时掌握最新汇率、签证信息和旅行建议</p>
+          </div>
+        </div>
+        <div id="currencyInfo" style="display: flex; flex-direction: column; gap: 10px;">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Features -->
+<section class="section" id="features">
+  <div class="section-header">
+    <div>
+      <div class="section-eyebrow">为什么选择我们</div>
+      <h2 class="section-title">重新定义旅行规划</h2>
+    </div>
+  </div>
+
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-icon">&#9872;</div>
+      <h3>智能行程优化</h3>
+      <p>基于实时交通、天气和人流数据，自动优化你的旅行路线，确保每一站都在最佳时机抵达。</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">&#9830;</div>
+      <h3>实时价格追踪</h3>
+      <p>智能监控国内机票与酒店价格波动，在最佳时机锁定最低价格，平均节省 23% 旅行预算。</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">&#9733;</div>
+      <h3>本地达人推荐</h3>
+      <p>连接全国 50 万本地达人，获取最地道的特色美食、景点和文化体验推荐，告别游客陷阱。</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">&#9788;</div>
+      <h3>天气智能预警</h3>
+      <p>实时监控行程中所有目的地的天气变化，提前预警恶劣天气并自动推荐替代方案。</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">&#9992;</div>
+      <h3>多式交通衔接</h3>
+      <p>无缝整合航班、火车、巴士和轮渡，一键生成最优多式联运方案，让换乘不再烦恼。</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">&#9823;</div>
+      <h3>好友协同规划</h3>
+      <p>邀请同游好友实时协作编辑行程，投票决定目的地，让每一次出行都充满共识与期待。</p>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+  <div>
+    <span class="footer-brand">NOMAD</span>
+    <p class="footer-copy" style="margin-top: 4px;">&copy; 2026 Nomad Travel. 让每一次出发都值得铭记。</p>
+  </div>
+  <ul class="footer-links">
+    <li><a href="#">关于我们</a></li>
+    <li><a href="#">隐私政策</a></li>
+    <li><a href="#">使用条款</a></li>
+    <li><a href="#">联系我们</a></li>
+  </ul>
+</footer>
+
+<!-- Auth Modal -->
+<div class="settings-modal-overlay" id="settingsOverlay" style="display: none;">
+  <div class="settings-modal">
+    <div id="authForm" style="display: block;">
+      <div style="display: flex; gap: 12px; margin-bottom: 20px;">
+        <button class="style-btn selected" id="authTabLogin" style="flex:1; text-align:center;">登录</button>
+        <button class="style-btn" id="authTabRegister" style="flex:1; text-align:center;">注册</button>
+      </div>
+      <div id="loginForm">
+        <div class="settings-field">
+          <label>用户名</label>
+          <input type="text" id="loginUsername" placeholder="输入用户名...">
+        </div>
+        <div class="settings-field">
+          <label>密码</label>
+          <input type="password" id="loginPassword" placeholder="输入密码...">
+        </div>
+        <div class="settings-modal-actions">
+          <button class="btn btn-ghost btn-sm" id="settingsCancel">取消</button>
+          <button class="btn btn-primary btn-sm" id="loginBtn">登录</button>
+        </div>
+      </div>
+      <div id="registerForm" style="display: none;">
+        <div class="settings-field">
+          <label>用户名</label>
+          <input type="text" id="regUsername" placeholder="创建用户名...">
+        </div>
+        <div class="settings-field">
+          <label>邮箱（选填）</label>
+          <input type="email" id="regEmail" placeholder="your@email.com">
+        </div>
+        <div class="settings-field">
+          <label>密码</label>
+          <input type="password" id="regPassword" placeholder="至少6位密码...">
+        </div>
+        <div class="settings-modal-actions">
+          <button class="btn btn-ghost btn-sm" id="settingsCancel2">取消</button>
+          <button class="btn btn-primary btn-sm" id="registerBtn">注册</button>
+        </div>
+      </div>
+      <div style="font-size: 0.6875rem; color: var(--text-muted); text-align: center; margin-top: 12px;">
+        第三方 API 密钥由服务端统一管理，无需单独配置
+      </div>
+    </div>
+    <div id="userInfo" style="display: none;">
+      <h3>账户信息</h3>
+      <div style="margin: 16px 0; padding: 16px; background: var(--bg-deep); border-radius: var(--radius-sm);">
+        <div style="font-weight: 600; font-size: 1.125rem; color: var(--gold);" id="displayUsername"></div>
+        <div style="font-size: 0.75rem; color: var(--text-muted);" id="displayEmail"></div>
+      </div>
+      <p style="font-size: 0.75rem; color: var(--text-muted);">行程会自动同步到云端，登录其他设备即可恢复。</p>
+      <div class="settings-modal-actions">
+        <button class="btn btn-ghost btn-sm" id="settingsCancel3">关闭</button>
+        <button class="btn btn-ghost btn-sm" id="logoutBtn" style="border-color: rgba(201,122,91,0.4); color: var(--copper);">退出登录</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Unsplash Dataset: pre-curated destination photos (no API key needed, loaded inline) -->
+<script>
+/* ============================================================
+   NOMAD — Real-Time Travel Planner
+   ============================================================ */
+
+// ---- DATA ----
+const destinations = [
+  { id: 'beijing', city: '北京', country: '中国', region: '华北', currency: 'CNY', rate: 1, timezone: 'UTC+8', lat: 39.90, lng: 116.41, weather: { temp: 20, condition: '晴', icon: '☀' }, cost: 1000, popularity: 99, scenicSpots: 238, trafficScore: 98, priceIndex: 120, crowdLevel: 95, climateScore: 68, nicheScore: 3, interests: ['历史文化','城市探索','美食体验'] },
+  { id: 'shanghai', city: '上海', country: '中国', region: '华东', currency: 'CNY', rate: 1, timezone: 'UTC+8', lat: 31.23, lng: 121.47, weather: { temp: 22, condition: '多云', icon: '☁' }, cost: 1100, popularity: 98, scenicSpots: 180, trafficScore: 99, priceIndex: 135, crowdLevel: 92, climateScore: 72, nicheScore: 5, interests: ['城市探索','美食体验','休闲度假'] },
+  { id: 'chengdu', city: '成都', country: '中国', region: '西南', currency: 'CNY', rate: 1, timezone: 'UTC+8', lat: 30.57, lng: 104.07, weather: { temp: 23, condition: '阴', icon: '☁' }, cost: 600, popularity: 96, scenicSpots: 155, trafficScore: 85, priceIndex: 62, crowdLevel: 75, climateScore: 78, nicheScore: 18, interests: ['美食体验','休闲度假','历史文化'] },
+  { id: 'lijiang', city: '丽江', country: '中国', region: '西南', currency: 'CNY', rate: 1, timezone: 'UTC+8', lat: 26.87, lng: 100.23, weather: { temp: 18, condition: '晴', icon: '☀' }, cost: 500, popularity: 89, scenicSpots: 42, trafficScore: 38, priceIndex: 45, crowdLevel: 62, climateScore: 84, nicheScore: 58, interests: ['自然风光','历史文化','休闲度假'] },
+  { id: 'sanya', city: '三亚', country: '中国', region: '华南', currency: 'CNY', rate: 1, timezone: 'UTC+8', lat: 18.25, lng: 109.50, weather: { temp: 30, condition: '晴', icon: '☀' }, cost: 900, popularity: 91, scenicSpots: 30, trafficScore: 52, priceIndex: 95, crowdLevel: 72, climateScore: 92, nicheScore: 32, interests: ['休闲度假','自然风光','美食体验'] },
+  { id: 'xian', city: '西安', country: '中国', region: '西北', currency: 'CNY', rate: 1, timezone: 'UTC+8', lat: 34.34, lng: 108.94, weather: { temp: 21, condition: '晴', icon: '☀' }, cost: 550, popularity: 95, scenicSpots: 175, trafficScore: 80, priceIndex: 50, crowdLevel: 80, climateScore: 65, nicheScore: 15, interests: ['历史文化','美食体验','城市探索'] },
+  { id: 'guilin', city: '桂林', country: '中国', region: '华南', currency: 'CNY', rate: 1, timezone: 'UTC+8', lat: 25.27, lng: 110.28, weather: { temp: 24, condition: '小雨', icon: '🌧' }, cost: 450, popularity: 87, scenicSpots: 76, trafficScore: 48, priceIndex: 38, crowdLevel: 58, climateScore: 82, nicheScore: 62, interests: ['自然风光','户外探险','休闲度假'] },
+  { id: 'lhasa', city: '拉萨', country: '中国', region: '西南', currency: 'CNY', rate: 1, timezone: 'UTC+8', lat: 29.65, lng: 91.13, weather: { temp: 12, condition: '晴', icon: '☀' }, cost: 700, popularity: 81, scenicSpots: 48, trafficScore: 20, priceIndex: 60, crowdLevel: 25, climateScore: 30, nicheScore: 92, interests: ['历史文化','自然风光','户外探险'] },
+  { id: 'zhangjiajie', city: '张家界', country: '中国', region: '华中', currency: 'CNY', rate: 1, timezone: 'UTC+8', lat: 29.12, lng: 110.48, weather: { temp: 20, condition: '多云', icon: '☁' }, cost: 550, popularity: 86, scenicSpots: 35, trafficScore: 42, priceIndex: 42, crowdLevel: 55, climateScore: 76, nicheScore: 65, interests: ['自然风光','户外探险','休闲度假'] },
+  { id: 'xiamen', city: '厦门', country: '中国', region: '华东', currency: 'CNY', rate: 1, timezone: 'UTC+8', lat: 24.48, lng: 118.09, weather: { temp: 25, condition: '晴', icon: '☀' }, cost: 700, popularity: 88, scenicSpots: 60, trafficScore: 75, priceIndex: 72, crowdLevel: 60, climateScore: 86, nicheScore: 42, interests: ['休闲度假','美食体验','城市探索'] },
+  { id: 'harbin', city: '哈尔滨', country: '中国', region: '东北', currency: 'CNY', rate: 1, timezone: 'UTC+8', lat: 45.80, lng: 126.53, weather: { temp: 8, condition: '多云', icon: '☁' }, cost: 500, popularity: 84, scenicSpots: 85, trafficScore: 70, priceIndex: 48, crowdLevel: 48, climateScore: 22, nicheScore: 48, interests: ['自然风光','城市探索','历史文化'] },
+  { id: 'dunhuang', city: '敦煌', country: '中国', region: '西北', currency: 'CNY', rate: 1, timezone: 'UTC+8', lat: 40.14, lng: 94.66, weather: { temp: 18, condition: '晴', icon: '☀' }, cost: 600, popularity: 76, scenicSpots: 25, trafficScore: 28, priceIndex: 38, crowdLevel: 22, climateScore: 38, nicheScore: 95, interests: ['历史文化','户外探险','自然风光'] },
+];
+
+// ---- BACKEND API CONFIGURATION ----
+const API_BASE = '/api';
+
+// Auth state
+let authToken = localStorage.getItem('nomad_token') || '';
+let currentUser = null;
+try {
+  const u = localStorage.getItem('nomad_user');
+  if (u) currentUser = JSON.parse(u);
+} catch (e) { currentUser = null; }
+
+function setAuth(token, user) {
+  authToken = token;
+  currentUser = user;
+  localStorage.setItem('nomad_token', token);
+  localStorage.setItem('nomad_user', JSON.stringify(user));
+}
+
+function clearAuth() {
+  authToken = '';
+  currentUser = null;
+  localStorage.removeItem('nomad_token');
+  localStorage.removeItem('nomad_user');
+}
+
+async function apiFetch(path, options = {}) {
+  const headers = { 'Content-Type': 'application/json', ...options.headers };
+  if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+  const resp = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  if (resp.status === 401) { clearAuth(); }
+  return resp;
+}
+
+// ---- AMAP CITY ADCODE MAPPING ----
+const AMAP_ADCODE = {
+  beijing: '110000', shanghai: '310000', chengdu: '510100',
+  lijiang: '530700', sanya: '460200', xian: '610100',
+  guilin: '450300', lhasa: '540100', zhangjiajie: '430800',
+  xiamen: '350200', harbin: '230100', dunhuang: '620900'
+};
+
+// ---- API CACHES ----
+const weatherCache = {};   // keyed by dest.id: { data, timestamp }
+const airQualityCache = {}; // keyed by dest.id: { data, timestamp }
+const amapCache = {};       // keyed by dest.id: { poiData, timestamp }
+
+// ---- CHINESE HOLIDAY CALENDAR 2025-2026 ----
+// Source: 国务院办公厅 holiday announcements
+const CHINA_HOLIDAYS = [
+  { name: '元旦', start: '2025-01-01', end: '2025-01-01', crowdBoost: 5 },
+  { name: '春节', start: '2025-01-28', end: '2025-02-04', crowdBoost: 25 },
+  { name: '清明节', start: '2025-04-04', end: '2025-04-06', crowdBoost: 10 },
+  { name: '劳动节', start: '2025-05-01', end: '2025-05-05', crowdBoost: 20 },
+  { name: '端午节', start: '2025-05-31', end: '2025-06-02', crowdBoost: 10 },
+  { name: '中秋节+国庆', start: '2025-10-01', end: '2025-10-08', crowdBoost: 25 },
+  { name: '元旦', start: '2026-01-01', end: '2026-01-03', crowdBoost: 5 },
+  { name: '春节', start: '2026-02-17', end: '2026-02-23', crowdBoost: 25 },
+  { name: '清明节', start: '2026-04-05', end: '2026-04-07', crowdBoost: 10 },
+  { name: '劳动节', start: '2026-05-01', end: '2026-05-05', crowdBoost: 20 },
+  { name: '端午节', start: '2026-05-20', end: '2026-05-22', crowdBoost: 10 },
+  { name: '中秋节', start: '2026-09-25', end: '2026-09-27', crowdBoost: 12 },
+  { name: '国庆节', start: '2026-10-01', end: '2026-10-07', crowdBoost: 25 },
+];
+
+function getHolidayImpact() {
+  const today = new Date();
+  const dateStr = today.toISOString().split('T')[0];
+  // Check all holidays and surrounding 3-day windows
+  for (const h of CHINA_HOLIDAYS) {
+    const start = new Date(h.start);
+    const end = new Date(h.end);
+    const preStart = new Date(start); preStart.setDate(preStart.getDate() - 3);
+    const postEnd = new Date(end); postEnd.setDate(postEnd.getDate() + 3);
+    if (today >= preStart && today <= postEnd) {
+      // Closer to holiday = higher impact
+      const distToHoliday = Math.min(
+        Math.abs(today - start), Math.abs(today - end), 0
+      ) / (1000 * 60 * 60 * 24);
+      const factor = distToHoliday <= 1 ? 1 : distToHoliday <= 3 ? 0.6 : 0.3;
+      return { isHoliday: true, name: h.name, crowdBoost: Math.round(h.crowdBoost * factor) };
+    }
+  }
+  return { isHoliday: false, name: '', crowdBoost: 0 };
+}
+const ratesCache = {};      // { data, timestamp }
+const imageCache = {};      // keyed by dest.id: { url, author, authorUrl }
+const attractionsCache = {};// keyed by dest.id: { data, timestamp }
+
+const avatarColors = ['#c9a44b', '#c97a5b', '#7ba58d', '#6b8fbf', '#b87c9b', '#8b9e7c', '#c47d5a', '#7b8eb5'];
+const travelerNames = ['晓月', '明哲', '思远', '雨桐', '浩然', '子涵', '一诺', '俊杰', '诗涵', '宇轩', '欣怡', '梓豪', '若曦', '天佑', '语嫣'];
+
+const activityTemplates = [
+  (n, l) => `<strong>${n}</strong> 正在规划前往 <span class="location">${l}</span> 的行程`,
+  (n, l) => `<strong>${n}</strong> 将 <span class="location">${l}</span> 加入了心愿单`,
+  (n, l) => `<strong>${n}</strong> 预订了飞往 <span class="location">${l}</span> 的机票`,
+  (n, l) => `<strong>${n}</strong> 在 <span class="location">${l}</span> 找到了超值酒店`,
+  (n, l) => `<strong>${n}</strong> 分享了 <span class="location">${l}</span> 的旅行攻略`,
+  (n, l) => `<strong>${n}</strong> 抵达了 <span class="location">${l}</span>`,
+];
+
+// ---- STATE ----
+let itinerary = [];
+let tripStartDate = new Date();
+let activityLog = [];
+
+const STORAGE_KEY = 'nomad_itinerary';
+const START_DATE_KEY = 'nomad_trip_start';
+
+function saveState() {
+  // Always save locally as fallback
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(itinerary));
+    localStorage.setItem(START_DATE_KEY, tripStartDate.toISOString());
+  } catch (e) { /* quota exceeded */ }
+
+  // If logged in, also save to backend
+  if (authToken && itinerary.length > 0) {
+    const stops = itinerary.map(d => ({
+      id: d.id, city: d.city, country: d.country,
+      stayDays: d.stayDays || 2, cost: d.cost,
+      lat: d.lat, lng: d.lng
+    }));
+    const yyyy = tripStartDate.getFullYear();
+    const mm = String(tripStartDate.getMonth() + 1).padStart(2, '0');
+    const dd = String(tripStartDate.getDate()).padStart(2, '0');
+    apiFetch('/auth/itineraries', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: `${itinerary.map(d => d.city).join(' → ')}`,
+        trip_start_date: `${yyyy}-${mm}-${dd}`,
+        stops
+      })
+    }).catch(() => {}); // silent failure
+  }
+}
+
+function loadState() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      itinerary = JSON.parse(saved);
+      itinerary.forEach(d => { if (!d.stayDays) d.stayDays = rand(2, 4); });
+    }
+    const savedDate = localStorage.getItem(START_DATE_KEY);
+    if (savedDate) tripStartDate = new Date(savedDate);
+  } catch (e) {
+    itinerary = [];
+  }
+}
+
+function getFilteredDestinations() {
+  const q = ($('#plannerSearch').value || '').toLowerCase().trim();
+  if (!q) return destinations;
+  return destinations.filter(d =>
+    d.city.toLowerCase().includes(q) ||
+    d.country.toLowerCase().includes(q) ||
+    d.region.toLowerCase().includes(q)
+  );
+}
+
+// ---- UTILS ----
+function $(sel) { return document.querySelector(sel); }
+function $$(sel) { return document.querySelectorAll(sel); }
+function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function fmt(n) { return n.toLocaleString('zh-CN'); }
+function fmtMoney(n) { return '¥' + n.toLocaleString('zh-CN'); }
+function escapeHTML(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function getWeatherHTML(d) {
+  const w = weatherCache[d.id] ? weatherCache[d.id].data : d.weather;
+  return `${w.icon} ${w.temp}°C ${w.condition}`;
+}
+
+// ============================================================
+// API SERVICE LAYER — all third-party calls proxied through backend
+// API keys are stored only on the server
+// ============================================================
+
+function weatherIconForCode(code) {
+  if (code <= 1) return '☀';
+  if (code === 2) return '⛅';
+  if (code === 3) return '☁';
+  if (code <= 48) return '🌫';
+  if (code <= 57) return '🌧';
+  if (code <= 67) return '🌧';
+  if (code <= 77) return '❄';
+  if (code <= 82) return '🌧';
+  if (code <= 86) return '❄';
+  return '⛈';
+}
+
+function weatherConditionForCode(code) {
+  if (code <= 1) return '晴';
+  if (code === 2) return '多云';
+  if (code === 3) return '阴';
+  if (code <= 48) return '雾';
+  if (code <= 57) return '毛毛雨';
+  if (code <= 67) return '雨';
+  if (code <= 77) return '雪';
+  if (code <= 82) return '阵雨';
+  if (code <= 86) return '阵雪';
+  return '雷暴';
+}
+
+// ---- Weather (via backend → Open-Meteo) ----
+async function fetchWeatherFromAPI(lat, lng) {
+  try {
+    const resp = await apiFetch(`/proxy/weather?lat=${lat}&lng=${lng}`);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const json = await resp.json();
+    const cw = json.current_weather;
+    return {
+      temp: Math.round(cw.temperature),
+      condition: weatherConditionForCode(cw.weathercode),
+      icon: weatherIconForCode(cw.weathercode),
+      windspeed: cw.windspeed,
+      time: cw.time
+    };
+  } catch (e) { console.warn('Weather fetch failed:', e.message); return null; }
+}
+
+async function loadAllWeather() {
+  const promises = destinations.map(async (d) => {
+    const cached = weatherCache[d.id];
+    if (cached && (Date.now() - cached.timestamp < 15 * 60 * 1000)) return;
+    const data = await fetchWeatherFromAPI(d.lat, d.lng);
+    if (data) weatherCache[d.id] = { data, timestamp: Date.now() };
+  });
+  await Promise.allSettled(promises);
+}
+
+// ---- Air Quality (via backend → Open-Meteo) ----
+function aqiLevelInfo(aqi) {
+  if (aqi <= 50)  return { level: '优', color: '#7ba58d', bg: 'rgba(123,165,141,0.12)', emoji: '🟢' };
+  if (aqi <= 100) return { level: '良', color: '#c9a44b', bg: 'rgba(201,164,75,0.12)', emoji: '🟡' };
+  if (aqi <= 150) return { level: '轻度', color: '#d4913e', bg: 'rgba(212,145,62,0.12)', emoji: '🟠' };
+  return             { level: '差', color: '#c97a5b', bg: 'rgba(201,122,91,0.12)', emoji: '🔴' };
+}
+
+async function fetchAirQuality(lat, lng) {
+  try {
+    const resp = await apiFetch(`/proxy/air-quality?lat=${lat}&lng=${lng}`);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const json = await resp.json();
+    const c = json.current;
+    return {
+      aqi: Math.round(c.european_aqi || 0),
+      pm25: c.pm2_5 != null ? Math.round(c.pm2_5) : null,
+      pm10: c.pm10 != null ? Math.round(c.pm10) : null,
+      time: c.time
+    };
+  } catch (e) { console.warn('Air Quality fetch failed:', e.message); return null; }
+}
+
+async function loadAllAirQuality() {
+  const promises = destinations.map(async (d) => {
+    const cached = airQualityCache[d.id];
+    if (cached && (Date.now() - cached.timestamp < 30 * 60 * 1000)) return;
+    const data = await fetchAirQuality(d.lat, d.lng);
+    if (data) airQualityCache[d.id] = { data, timestamp: Date.now() };
+  });
+  await Promise.allSettled(promises);
+}
+
+// ---- Exchange Rates (via backend → Frankfurter) ----
+async function fetchExchangeRates() {
+  if (ratesCache.data && (Date.now() - ratesCache.timestamp < 24 * 60 * 60 * 1000)) return;
+  try {
+    const resp = await apiFetch('/proxy/exchange-rates');
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const json = await resp.json();
+    ratesCache.data = json.rates;
+    ratesCache.timestamp = Date.now();
+  } catch (e) { console.warn('Exchange rate fetch failed:', e.message); }
+}
+
+function getRateForCurrency(currency) {
+  if (!ratesCache.data) return null;
+  return ratesCache.data[currency] || null;
+}
+
+// ---- Unsplash Images (via backend — API key server-side) ----
+async function fetchDestinationImage(destId) {
+  const dest = destinations.find(d => d.id === destId);
+  if (!dest) return null;
+  try {
+    const query = encodeURIComponent(`${dest.city} ${dest.country} landmark travel`);
+    const resp = await apiFetch(`/proxy/unsplash-photo?query=${query}`);
+    if (!resp.ok) return null;
+    const json = await resp.json();
+    if (json.results && json.results.length > 0) {
+      const img = json.results[0];
+      return {
+        url: img.urls.regular, thumb: img.urls.thumb,
+        author: img.user.name,
+        authorUrl: img.user.links.html + '?utm_source=nomad&utm_medium=referral'
+      };
+    }
+    return null;
+  } catch (e) { console.warn('Unsplash fetch failed for', destId, ':', e.message); return null; }
+}
+
+async function loadAllImages() {
+  const datasetIds = new Set(Object.keys(typeof destinationPhotos !== 'undefined' ? destinationPhotos : {}));
+  const promises = destinations.map(async (d) => {
+    if (imageCache[d.id] && datasetIds.has(d.id)) return;
+    if (imageCache[d.id]) return;
+    const data = await fetchDestinationImage(d.id);
+    if (data) imageCache[d.id] = data;
+  });
+  await Promise.allSettled(promises);
+}
+
+// ---- Dataset Image Loader ----
+function loadDatasetImages() {
+  if (typeof destinationPhotos === 'undefined') { console.warn('destinationPhotos not found'); return; }
+  Object.entries(destinationPhotos).forEach(([destId, photos]) => {
+    if (!photos || photos.length === 0) return;
+    const top = photos[0];
+    imageCache[destId] = {
+      url: top.url, thumb: top.url, fullUrl: top.fullUrl,
+      author: top.author, authorUrl: top.authorUrl,
+      desc: top.desc, blurHash: top.blurHash, allPhotos: photos
+    };
+  });
+  console.log(`Dataset images loaded: ${Object.keys(imageCache).length} destinations covered`);
+}
+
+// ---- Geoapify Attractions (via backend — API key server-side) ----
+async function fetchAttractions(lat, lng) {
+  try {
+    const resp = await apiFetch(`/proxy/amap-around?lat=${lat}&lng=${lng}`);
+    if (!resp.ok) return null;
+    const json = await resp.json();
+    return (json.pois || []).map(p => ({
+      name: p.name || '未知景点',
+      category: p.type || '景点',
+      distance: parseInt(p.distance) || 0,
+      address: p.address || ''
+    }));
+  } catch (e) { console.warn('AMap around fetch failed:', e.message); return null; }
+}
+
+async function loadAttractionsForItinerary() {
+  const promises = itinerary.map(async (d) => {
+    const cached = attractionsCache[d.id];
+    if (cached && (Date.now() - cached.timestamp < 60 * 60 * 1000)) return;
+    const data = await fetchAttractions(d.lat, d.lng);
+    if (data) attractionsCache[d.id] = { data, timestamp: Date.now() };
+  });
+  await Promise.allSettled(promises);
+}
+
+// ---- OSM Overpass: Transport Infrastructure (via backend) ----
+async function fetchOSMTransport(destId, lat, lng) {
+  try {
+    const resp = await apiFetch(`/proxy/osm-transport?lat=${lat}&lng=${lng}`);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const json = await resp.json();
+    const counts = { railway: 0, airport: 0, transit: 0 };
+    (json.elements || []).forEach(el => {
+      if (el.tags) {
+        if (el.tags.railway === 'station') counts.railway++;
+        else if (el.tags.aeroway === 'aerodrome') counts.airport++;
+        else if (el.tags.public_transport === 'station') counts.transit++;
+      }
+    });
+    return counts;
+  } catch (e) { console.warn('OSM fetch failed:', e.message); return null; }
+}
+
+const osmTransportCache = {};
+async function loadAllOSMData() {
+  const promises = destinations.map(async (d) => {
+    if (osmTransportCache[d.id]) return;
+    const data = await fetchOSMTransport(d.id, d.lat, d.lng);
+    if (data) osmTransportCache[d.id] = data;
+  });
+  await Promise.allSettled(promises);
+}
+
+// ---- AMap / 高德 (via backend — API key server-side) ----
+async function fetchAMapPOI(destId, adcode, keywords) {
+  try {
+    const kw = encodeURIComponent(keywords || '旅游景点');
+    const resp = await apiFetch(`/proxy/amap-poi?keywords=${kw}&city=${adcode}`);
+    if (!resp.ok) return null;
+    const json = await resp.json();
+    if (json.status !== '1') { console.warn('AMap POI error:', json.info); return null; }
+    return (json.pois || []).map(p => ({
+      name: p.name, type: p.type, address: p.address,
+      rating: p.biz_ext ? (p.biz_ext.rating || '') : '',
+      tel: p.tel || '', photos: (p.photos || []).slice(0, 3).map(ph => ph.url)
+    }));
+  } catch (e) { console.warn('AMap POI fetch failed:', e.message); return null; }
+}
+
+async function fetchAMapWeather(adcode) {
+  try {
+    const resp = await apiFetch(`/proxy/amap-weather?city=${adcode}`);
+    if (!resp.ok) return null;
+    const json = await resp.json();
+    if (json.status !== '1') { console.warn('AMap Weather error:', json.info); return null; }
+    const live = json.lives ? json.lives[0] : null;
+    if (!live) return null;
+    return {
+      temp: parseInt(live.temperature) || 0, condition: live.weather || '晴',
+      humidity: parseInt(live.humidity) || 0, wind: live.winddirection || '',
+      reportTime: live.reporttime || ''
+    };
+  } catch (e) { console.warn('AMap Weather fetch failed:', e.message); return null; }
+}
+
+async function loadAMapData() {
+  const promises = destinations.map(async (d) => {
+    const adcode = AMAP_ADCODE[d.id];
+    if (!adcode) return;
+    const cached = amapCache[d.id];
+    if (cached && (Date.now() - cached.timestamp < 60 * 60 * 1000)) return;
+    const [poiData, weatherData] = await Promise.all([
+      fetchAMapPOI(d.id, adcode, '旅游景点'),
+      fetchAMapWeather(adcode)
+    ]);
+    amapCache[d.id] = { poi: poiData, weather: weatherData, timestamp: Date.now() };
+  });
+  await Promise.allSettled(promises);
+}
+
+// ---- Unified initializer ----
+async function initAPIData() {
+  // 1. Load dataset images instantly (no API call)
+  loadDatasetImages();
+
+  // 2. Fetch live API data via backend proxy
+  await Promise.all([
+    loadAllWeather(),
+    loadAllAirQuality(),
+    loadAllOSMData(),
+    loadAMapData(),
+    fetchExchangeRates(),
+    loadAllImages()
+  ]);
+
+  // 3. Update UI with live data
+  updateWeatherWidgets();
+  updateCurrencyInfo();
+  refreshTrendingImages();
+  if (itinerary.length > 0) {
+    updateItinerary();
+    renderSearchResults(getFilteredDestinations());
+    loadAttractionsForItinerary().then(() => renderAttractions());
+  }
+}
+
+// ---- 5A/4A SCENIC SPOT DATABASE (static open data) ----
+const SCENIC_SPOTS = {
+  beijing: [{name:'故宫博物院',grade:'5A'},{name:'八达岭长城',grade:'5A'},{name:'颐和园',grade:'5A'},{name:'天坛公园',grade:'5A'},{name:'明十三陵',grade:'5A'},{name:'恭王府',grade:'5A'},{name:'圆明园遗址公园',grade:'5A'},{name:'雍和宫',grade:'4A'}],
+  shanghai: [{name:'东方明珠',grade:'5A'},{name:'上海野生动物园',grade:'5A'},{name:'上海科技馆',grade:'5A'},{name:'豫园',grade:'4A'},{name:'外滩',grade:'4A'},{name:'上海迪士尼',grade:'5A'}],
+  chengdu: [{name:'都江堰',grade:'5A'},{name:'青城山',grade:'5A'},{name:'大熊猫繁育基地',grade:'4A'},{name:'武侯祠',grade:'4A'},{name:'宽窄巷子',grade:'4A'},{name:'杜甫草堂',grade:'4A'}],
+  lijiang: [{name:'丽江古城',grade:'5A'},{name:'玉龙雪山',grade:'5A'},{name:'泸沽湖',grade:'4A'},{name:'束河古镇',grade:'4A'},{name:'虎跳峡',grade:'4A'}],
+  sanya: [{name:'南山文化旅游区',grade:'5A'},{name:'蜈支洲岛',grade:'5A'},{name:'天涯海角',grade:'4A'},{name:'亚龙湾',grade:'4A'},{name:'大小洞天',grade:'5A'}],
+  xian: [{name:'兵马俑',grade:'5A'},{name:'大雁塔',grade:'5A'},{name:'华清宫',grade:'5A'},{name:'西安城墙',grade:'5A'},{name:'大唐芙蓉园',grade:'5A'},{name:'陕西历史博物馆',grade:'4A'}],
+  guilin: [{name:'漓江景区',grade:'5A'},{name:'象山景区',grade:'5A'},{name:'两江四湖',grade:'5A'},{name:'龙脊梯田',grade:'4A'},{name:'阳朔西街',grade:'4A'}],
+  lhasa: [{name:'布达拉宫',grade:'5A'},{name:'大昭寺',grade:'5A'},{name:'纳木错',grade:'4A'},{name:'罗布林卡',grade:'4A'},{name:'色拉寺',grade:'4A'}],
+  zhangjiajie: [{name:'张家界国家森林公园',grade:'5A'},{name:'天门山',grade:'5A'},{name:'武陵源',grade:'5A'},{name:'黄龙洞',grade:'4A'},{name:'袁家界',grade:'4A'}],
+  xiamen: [{name:'鼓浪屿',grade:'5A'},{name:'南普陀寺',grade:'4A'},{name:'厦门园林植物园',grade:'4A'},{name:'胡里山炮台',grade:'4A'},{name:'曾厝垵',grade:'4A'}],
+  harbin: [{name:'冰雪大世界',grade:'5A'},{name:'太阳岛',grade:'5A'},{name:'中央大街',grade:'4A'},{name:'圣索菲亚教堂',grade:'4A'},{name:'东北虎林园',grade:'4A'}],
+  dunhuang: [{name:'莫高窟',grade:'5A'},{name:'鸣沙山月牙泉',grade:'5A'},{name:'雅丹魔鬼城',grade:'4A'},{name:'玉门关',grade:'4A'},{name:'阳关',grade:'4A'}],
+};
+
+// ============================================================
+// DL-BASED RECOMMENDATION ENGINE
+// ============================================================
+
+const DIMENSION_LABELS = {
+  climate_match:      { label: '气候匹配度',   color: '#7ba58d', source: '中国气象局 / Open-Meteo' },
+  budget_fit:         { label: '预算适配度',   color: '#c9a44b', source: '国家统计局 / 文化和旅游部' },
+  interest_align:     { label: '兴趣契合度',   color: '#c97a5b', source: 'AI 语义分析模型' },
+  traffic_convenience:{ label: '交通便利度',   color: '#6b8fbf', source: '交通运输部 / OSM Overpass' },
+  crowd_avoidance:    { label: '客流避让度',   color: '#b87c9b', source: '文化和旅游部客流数据' },
+  scenic_density:     { label: '景区丰度',     color: '#8b9e7c', source: '文化和旅游部 A级景区名录' },
+  air_quality:        { label: '空气质量',     color: '#6bbf8b', source: 'Open-Meteo 空气质量 API' }
+};
+
+const DIMENSION_KEYS = Object.keys(DIMENSION_LABELS);
+
+// Interest interest matching matrix: maps interest tags to destination indices
+const INTEREST_TO_DEST = {
+  '自然风光': ['guilin','lijiang','zhangjiajie','sanya','harbin','lhasa','dunhuang'],
+  '历史文化': ['beijing','xian','dunhuang','lhasa','lijiang','chengdu','harbin'],
+  '美食体验': ['chengdu','beijing','xian','shanghai','xiamen','sanya'],
+  '户外探险': ['zhangjiajie','guilin','lhasa','dunhuang'],
+  '休闲度假': ['sanya','lijiang','xiamen','chengdu','guilin','shanghai'],
+  '城市探索': ['shanghai','beijing','xian','chengdu','xiamen','harbin']
+};
+
+function normalize(value, min, max) {
+  return Math.max(0, Math.min(1, (value - min) / (max - min)));
+}
+
+function sigmoid(x) {
+  return 1 / (1 + Math.exp(-x));
+}
+
+function computeRecommendations(profile) {
+  const { budget, interests, style, climate } = profile;
+
+  // Extract feature ranges for normalization
+  const costs = destinations.map(d => d.cost);
+  const costMin = Math.min(...costs), costMax = Math.max(...costs);
+  const spots = destinations.map(d => d.scenicSpots);
+  const spotsMax = Math.max(...spots);
+  const traffic = destinations.map(d => d.trafficScore);
+  const crowd = destinations.map(d => d.crowdLevel);
+  const climateS = destinations.map(d => d.climateScore);
+  const niche = destinations.map(d => d.nicheScore);
+
+  // Climate preference mapping
+  const climateWeights = { '温暖': 1.0, '温和': 1.0, '凉爽': 0.3 };
+  const climatePref = climateWeights[climate] || 1.0;
+
+  const scored = destinations.map(d => {
+    // Dimension 1: Climate match
+    const climate_match = normalize(d.climateScore - Math.abs(d.weather.temp - (climate === '凉爽' ? 10 : climate === '温暖' ? 28 : 20)) * 2, 0, 100);
+
+    // Dimension 2: Budget fit — how well daily cost fits within user budget
+    const rawBudgetFit = 1 - Math.abs(d.cost - budget) / Math.max(budget, costMax);
+    const budget_fit = sigmoid(rawBudgetFit * 6 - 3); // sharper sigmoid for budget sensitivity
+
+    // Dimension 3: Interest alignment — how many matched interest tags
+    let interestHits = 0;
+    interests.forEach(tag => {
+      if (d.interests.includes(tag)) interestHits++;
+      // Bonus: check if destination is in the global interest matrix for this tag
+      if ((INTEREST_TO_DEST[tag] || []).includes(d.id)) interestHits += 0.5;
+    });
+    const interest_align = normalize(interestHits, 0, interests.length * 1.5);
+
+    // Dimension 4: Traffic convenience (OSM-verified if available)
+    let traffic_verified = d.trafficScore;
+    const osmData = osmTransportCache[d.id];
+    if (osmData) {
+      const totalNodes = osmData.railway + osmData.airport + osmData.transit;
+      traffic_verified = Math.min(100, totalNodes * 5);
+      traffic_verified = Math.round(d.trafficScore * 0.7 + traffic_verified * 0.3);
+    }
+    const traffic_convenience = traffic_verified / 100;
+
+    // Dimension 5: Crowd avoidance (holiday-aware, inverse of crowd level)
+    const holiday = getHolidayImpact();
+    let crowdAdjusted = d.crowdLevel;
+    if (holiday.isHoliday) {
+      crowdAdjusted = Math.min(100, d.crowdLevel + holiday.crowdBoost);
+    }
+    const crowd_avoidance = 1 - (crowdAdjusted / 100);
+
+    // Dimension 6: Scenic density
+    const scenic_density = d.scenicSpots / spotsMax;
+
+    // Dimension 7: Air quality (inverse of AQI — lower AQI = better)
+    let air_quality = 0.7; // default neutral
+    const aqCache = airQualityCache[d.id];
+    if (aqCache && aqCache.data) {
+      const aqi = aqCache.data.aqi;
+      air_quality = aqi <= 50 ? 0.95 : aqi <= 100 ? 0.75 : aqi <= 150 ? 0.5 : 0.25;
+    }
+
+    // --- User-driven weight adjustments ---
+    const wInterest = 0.22;
+    const wBudget = 0.18;
+    const wClimate = 0.18;
+    const wCrowd = 0.12;
+    const wTraffic = 0.10;
+    const wScenic = 0.10;
+    const wAQI = 0.10;
+
+    // Adjust weights based on travel style
+    let wCrowdAdj = wCrowd, wBudgetAdj = wBudget, wScenicAdj = wScenic;
+    if (style === '背包穷游') { wBudgetAdj += 0.08; wCrowdAdj += 0.05; }
+    if (style === '舒适休闲') { wScenicAdj += 0.05; wCrowdAdj += 0.05; }
+    if (style === '奢华体验') { wScenicAdj += 0.05; wBudgetAdj -= 0.05; }
+    if (style === '亲子家庭') { wTraffic += 0.05; wCrowdAdj += 0.05; wAQI += 0.03; }
+
+    // Boost niche destinations for "户外探险" or "自然风光" interests
+    let nicheBoost = 0;
+    if (interests.includes('户外探险') || interests.includes('自然风光')) {
+      nicheBoost = d.nicheScore / 100 * 0.12;
+    }
+
+    const overallScore = (
+      climate_match * wClimate +
+      budget_fit * wBudgetAdj +
+      interest_align * wInterest +
+      traffic_convenience * wTraffic +
+      crowd_avoidance * wCrowdAdj +
+      scenic_density * wScenicAdj +
+      air_quality * wAQI +
+      nicheBoost
+    );
+
+    const confidence = Math.round(overallScore * 100);
+
+    return {
+      dest: d,
+      overallScore,
+      confidence,
+      holiday,
+      dimensions: {
+        climate_match:      Math.round(climate_match * 100),
+        budget_fit:         Math.round(budget_fit * 100),
+        interest_align:     Math.round(interest_align * 100),
+        traffic_convenience:Math.round(traffic_convenience * 100),
+        crowd_avoidance:    Math.round(crowd_avoidance * 100),
+        scenic_density:     Math.round(scenic_density * 100),
+        air_quality:        Math.round(air_quality * 100)
+      },
+      matchReasons: buildMatchReasons(d, profile, {climate_match, budget_fit, interest_align, crowd_avoidance, scenic_density, air_quality}, holiday)
+    };
+  });
+
+  // Sort by overall score descending
+  scored.sort((a, b) => b.overallScore - a.overallScore);
+
+  // Separate mainstream (popularity > 90) vs niche picks
+  const mainstream = scored.filter(s => s.dest.popularity >= 90);
+  const nichePicks = scored.filter(s => s.dest.popularity < 90);
+
+  return {
+    top: scored[0],
+    runners: scored.slice(1, 5),
+    niche: nichePicks.slice(0, 2),
+    all: scored
+  };
+}
+
+function buildMatchReasons(dest, profile, dims, holiday) {
+  const reasons = [];
+  if (dims.interest_align > 0.7) reasons.push(`与您的兴趣标签"${profile.interests.join('、')}"高度匹配`);
+  if (dims.budget_fit > 0.7) reasons.push(`日均消费 ¥${dest.cost} 在您的预算范围内`);
+  if (dims.climate_match > 0.7) reasons.push('当前气候条件与您的偏好吻合');
+  if (dims.crowd_avoidance > 0.6) reasons.push('预测客流适中，可避开拥挤');
+  if (dims.scenic_density > 0.6) reasons.push(`拥有 ${dest.scenicSpots} 个 A级以上景区（含 ${(SCENIC_SPOTS[dest.id]||[]).length} 个5A/4A）`);
+  if (dims.air_quality > 0.7) reasons.push('空气质量优良，适合户外出行');
+  if (dest.nicheScore > 60) reasons.push('算法挖掘的小众宝藏目的地');
+  if (dest.trafficScore > 85) reasons.push('交通基础设施完善，出行便利');
+  if (holiday && holiday.isHoliday) reasons.push(`${holiday.name}期间客流可能增加，建议提前预订`);
+  if (reasons.length === 0) reasons.push('综合多项指标表现均衡');
+  return reasons.slice(0, 3);
+}
+
+// ---- QUIZ INTERACTION HANDLERS ----
+(function initQuiz() {
+  // Budget slider
+  const budgetSlider = $('#budgetSlider');
+  const budgetDisplay = $('#budgetDisplay');
+  budgetSlider.addEventListener('input', () => {
+    budgetDisplay.textContent = '¥' + parseInt(budgetSlider.value).toLocaleString() + '/天';
+  });
+
+  // Interest chips — multi-select
+  $('#interestChips').addEventListener('click', (e) => {
+    const chip = e.target.closest('.interest-chip');
+    if (!chip) return;
+    chip.classList.toggle('selected');
+  });
+
+  // Travel style — single select
+  $('#styleSelector').addEventListener('click', (e) => {
+    const btn = e.target.closest('.style-btn');
+    if (!btn) return;
+    $('#styleSelector').querySelectorAll('.style-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+  });
+
+  // Climate preference — single select
+  $('#climateSelector').addEventListener('click', (e) => {
+    const btn = e.target.closest('.climate-btn');
+    if (!btn) return;
+    $('#climateSelector').querySelectorAll('.climate-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+  });
+
+  // AI Recommend button
+  $('#btnAIRecommend').addEventListener('click', () => {
+    const budget = parseInt(budgetSlider.value);
+    const interests = Array.from($('#interestChips').querySelectorAll('.interest-chip.selected')).map(c => c.dataset.tag);
+    const styleBtn = $('#styleSelector').querySelector('.style-btn.selected');
+    const climateBtn = $('#climateSelector').querySelector('.climate-btn.selected');
+    const style = styleBtn ? styleBtn.dataset.style : '舒适休闲';
+    const climate = climateBtn ? climateBtn.dataset.climate : '温和';
+
+    if (interests.length === 0) {
+      showToast('请至少选择一个兴趣偏好');
+      return;
+    }
+
+    const profile = { budget, interests, style, climate };
+    const results = computeRecommendations(profile);
+    renderRecommendations(results, profile);
+
+    // Show and scroll to results
+    const recSection = $('#recommendations');
+    recSection.style.display = '';
+    setTimeout(() => {
+      recSection.scrollIntoView({ behavior: 'smooth' });
+    }, 150);
+  });
+})();
+
+// ---- RECOMMENDATION RENDERING ----
+function renderRadarSVG(dimensions) {
+  const labels = DIMENSION_KEYS;
+  const count = labels.length;
+  const cx = 130, cy = 130, r = 100;
+  const angleStep = (2 * Math.PI) / count;
+
+  // Build polygon points
+  const points = labels.map((key, i) => {
+    const val = (dimensions[key] || 0) / 100;
+    const angle = angleStep * i - Math.PI / 2;
+    return {
+      x: cx + r * val * Math.cos(angle),
+      y: cy + r * val * Math.sin(angle),
+      labelX: cx + (r + 24) * Math.cos(angle),
+      labelY: cy + (r + 24) * Math.sin(angle),
+      key,
+      val: dimensions[key] || 0,
+    };
+  });
+
+  // Grid rings
+  let rings = '';
+  [0.25, 0.5, 0.75, 1].forEach(frac => {
+    const ringPoints = labels.map((_, i) => {
+      const angle = angleStep * i - Math.PI / 2;
+      return `${cx + r * frac * Math.cos(angle)},${cy + r * frac * Math.sin(angle)}`;
+    }).join(' ');
+    rings += `<polygon points="${ringPoints}" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>`;
+  });
+
+  // Axis lines
+  let axes = '';
+  labels.forEach((_, i) => {
+    const angle = angleStep * i - Math.PI / 2;
+    axes += `<line x1="${cx}" y1="${cy}" x2="${cx + r * Math.cos(angle)}" y2="${cy + r * Math.sin(angle)}" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>`;
+  });
+
+  const dataPolygon = points.map(p => `${p.x},${p.y}`).join(' ');
+
+  // Labels
+  let labelHTML = '';
+  points.forEach(p => {
+    const info = DIMENSION_LABELS[p.key];
+    labelHTML += `<text x="${p.labelX}" y="${p.labelY}" text-anchor="middle" dominant-baseline="central" fill="${info.color}" font-size="10" font-family="DM Sans, sans-serif">${info.label} ${p.val}%</text>`;
+  });
+
+  return `
+    <svg viewBox="0 0 260 260" width="300" height="300" xmlns="http://www.w3.org/2000/svg">
+      <g transform="translate(0,0)">
+        ${rings}
+        ${axes}
+        <polygon points="${dataPolygon}" fill="rgba(201,164,75,0.12)" stroke="var(--gold)" stroke-width="1.5"/>
+        ${points.map(p => `<circle cx="${p.x}" cy="${p.y}" r="3" fill="${DIMENSION_LABELS[p.key].color}"/>`).join('')}
+        ${labelHTML}
+      </g>
+    </svg>
+  `;
+}
+
+function renderConfidenceRing(confidence) {
+  const r = 22, circ = 2 * Math.PI * r;
+  const offset = circ * (1 - confidence / 100);
+  return `
+    <svg width="56" height="56" viewBox="0 0 56 56">
+      <circle cx="28" cy="28" r="${r}" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="3"/>
+      <circle cx="28" cy="28" r="${r}" fill="none" stroke="url(#confGrad)" stroke-width="3"
+        stroke-dasharray="${circ}" stroke-dashoffset="${offset}" stroke-linecap="round"/>
+      <defs>
+        <linearGradient id="confGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#c9a44b"/>
+          <stop offset="100%" stop-color="#c97a5b"/>
+        </linearGradient>
+      </defs>
+    </svg>
+  `;
+}
+
+function renderHeroCard(result, profile) {
+  const { dest, confidence, dimensions, matchReasons } = result;
+  return `
+    <div class="rec-hero-badge">🏆 最佳匹配 · 综合评分 ${confidence}%</div>
+    ${result.holiday && result.holiday.isHoliday ? `<div class="holiday-warning" style="margin-bottom:16px;display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;background:rgba(201,122,91,0.1);border:1px solid rgba(201,122,91,0.25);color:var(--copper-bright);font-size:0.75rem;font-weight:600;">📅 ${result.holiday.name}临近 · 预计客流增加 · 建议提前规划</div>` : ''}
+    <div class="rec-hero-body">
+      <div class="rec-hero-info">
+        <div class="rec-hero-city">${dest.city}</div>
+        <div class="rec-hero-country">${dest.country} · 日均 ¥${dest.cost.toLocaleString()}</div>
+        <div class="rec-hero-confidence">
+          <div class="rec-confidence-ring">
+            ${renderConfidenceRing(confidence)}
+            <div class="rec-confidence-value">${confidence}%</div>
+          </div>
+          <div class="rec-confidence-label">
+            综合置信度<br><strong>${confidence >= 85 ? '极佳匹配' : confidence >= 70 ? '高度匹配' : '良好匹配'}</strong>
+          </div>
+        </div>
+        <ul class="rec-hero-reasons">
+          ${matchReasons.map(r => `<li>${r}</li>`).join('')}
+        </ul>
+        ${SCENIC_SPOTS[dest.id] ? `
+        <div style="margin-top:14px;">
+          <div style="font-size:0.6875rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:8px;">推荐景区</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;">
+            ${SCENIC_SPOTS[dest.id].slice(0, 5).map(s => `
+              <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:12px;font-size:0.6875rem;background:var(--bg-elevated);color:var(--text-secondary);">
+                ${s.grade === '5A' ? '<span style="color:var(--gold);font-size:0.625rem;">5A</span>' : '<span style="color:var(--sage);font-size:0.625rem;">4A</span>'}
+                ${s.name}
+              </span>
+            `).join('')}
+          </div>
+        </div>` : ''}
+        <div style="margin-top:16px;display:flex;gap:10px;">
+          <button class="btn btn-primary btn-sm" onclick="addToItinerary('${dest.id}')">加入行程</button>
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('planner').scrollIntoView({behavior:'smooth'})">查看详情</button>
+        </div>
+        ${dest.crowdLevel > 80 ? `<div class="crowd-warning" style="margin-top:12px;display:inline-flex;">⚠ 客流预警：预测密度 ${dest.crowdLevel}%，建议错峰出行</div>` : ''}
+        <div class="rec-breakdown">
+          <h4>7维度评分分解</h4>
+          ${DIMENSION_KEYS.map(k => {
+            const info = DIMENSION_LABELS[k];
+            return `
+              <div class="rec-dimension-bar">
+                <span class="rec-dim-label">${info.label}</span>
+                <div class="rec-dim-track"><div class="rec-dim-fill" style="width:${dimensions[k]}%;background:${info.color};"></div></div>
+                <span class="rec-dim-val">${dimensions[k]}%</span>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+      <div class="rec-radar-wrap">
+        ${renderRadarSVG(dimensions)}
+      </div>
+    </div>
+  `;
+}
+
+function renderRunnerCard(result, rank) {
+  const { dest, confidence, matchReasons } = result;
+  return `
+    <div class="rec-card rec-fade-in" onclick="addToItinerary('${dest.id}');showToast('已添加 ${dest.city} 到行程')">
+      <div class="rec-card-rank">No. ${rank}</div>
+      <div class="rec-card-city">${dest.city}</div>
+      <div class="rec-card-country">${dest.country} · ¥${dest.cost.toLocaleString()}/天
+        ${dest.crowdLevel > 80 ? '<span class="crowd-warning">客流高</span>' : dest.crowdLevel < 50 ? '<span class="crowd-warning crowd-ok">客流低</span>' : ''}
+      </div>
+      <div class="rec-card-score">
+        <div class="rec-card-score-bar"><div class="rec-card-score-fill" style="width:${confidence}%"></div></div>
+        <span class="rec-card-score-num">${confidence}%</span>
+      </div>
+      <div class="rec-card-reason">${matchReasons[0] || '综合指标均衡'}</div>
+      <div class="rec-card-actions">
+        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();addToItinerary('${dest.id}')">加入行程</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderAllResultsRow(result, rank) {
+  const { dest, confidence, dimensions } = result;
+  const topDim = DIMENSION_KEYS.reduce((a, b) => dimensions[a] > dimensions[b] ? a : b);
+  return `
+    <div class="rec-card rec-fade-in" style="display:flex;align-items:center;gap:16px;padding:14px 20px;cursor:pointer;" onclick="addToItinerary('${dest.id}');showToast('已添加 ${dest.city} 到行程')">
+      <span style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text-muted);min-width:24px;">#${rank}</span>
+      <div style="flex:1;min-width:120px;">
+        <div style="font-weight:600;font-size:0.9375rem;">${dest.city}</div>
+        <div style="font-size:0.6875rem;color:var(--text-muted);">${dest.country}</div>
+      </div>
+      <div style="flex:2;display:flex;align-items:center;gap:8px;">
+        <div class="rec-card-score-bar" style="flex:1;"><div class="rec-card-score-fill" style="width:${confidence}%"></div></div>
+        <span style="font-family:var(--font-mono);font-size:0.8125rem;color:var(--gold);min-width:36px;">${confidence}%</span>
+      </div>
+      <span style="font-size:0.6875rem;color:${DIMENSION_LABELS[topDim].color};min-width:80px;text-align:right;">${DIMENSION_LABELS[topDim].label} ${dimensions[topDim]}%</span>
+      <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();addToItinerary('${dest.id}')">加入</button>
+    </div>
+  `;
+}
+
+function renderRecommendations(results, profile) {
+  const { top, runners, niche, all } = results;
+
+  // Hero card
+  $('#recHeroCard').innerHTML = renderHeroCard(top, profile);
+
+  // Runners (3 cards)
+  $('#recRunners').innerHTML = runners.slice(0, 3).map((r, i) => renderRunnerCard(r, i + 2)).join('');
+
+  // Niche picks
+  if (niche.length > 0) {
+    $('#recNicheSection').style.display = '';
+    $('#recNicheCards').innerHTML = niche.map(r => renderRunnerCard(r, '')).join('');
+  } else {
+    $('#recNicheSection').style.display = 'none';
+  }
+
+  // All results
+  $('#recAllResults').innerHTML = all.map((r, i) => renderAllResultsRow(r, i + 1)).join('');
+
+  // Animate score bars after render
+  setTimeout(() => {
+    document.querySelectorAll('.rec-dim-fill').forEach(el => {
+      el.style.width = el.style.width; // trigger repaint
+    });
+  }, 100);
+}
+
+// ---- HERO PARTICLES ----
+(function initParticles() {
+  const container = $('#particles');
+  const count = 40;
+  let html = '';
+  for (let i = 0; i < count; i++) {
+    const left = Math.random() * 100;
+    const delay = Math.random() * 10;
+    const duration = 8 + Math.random() * 14;
+    const size = 1 + Math.random() * 2;
+    html += `<div class="particle" style="left:${left}%;bottom:-10px;width:${size}px;height:${size}px;animation-delay:${delay}s;animation-duration:${duration}s;"></div>`;
+  }
+  container.innerHTML = html;
+})();
+
+// ---- NAV SCROLL ----
+window.addEventListener('scroll', () => {
+  const nav = $('#nav');
+  if (window.scrollY > 50) {
+    nav.classList.add('scrolled');
+  } else {
+    nav.classList.remove('scrolled');
+  }
+});
+
+// ---- STATS COUNTER ----
+(function animateStats() {
+  const statEl = $('#statDestinations');
+  statEl.textContent = '339';
+})();
+
+// ---- ONLINE COUNT SIMULATION ----
+(function simulateOnlineCount() {
+  const el = $('#onlineCount');
+  let count = 2847;
+
+  setInterval(() => {
+    count += rand(-15, 20);
+    count = Math.max(2500, Math.min(3500, count));
+    el.textContent = fmt(count);
+  }, 3000);
+})();
+
+// ---- TRENDING CARDS ----
+// Load dataset images before rendering (instant, no API call)
+loadDatasetImages();
+
+(function renderTrending() {
+  const container = $('#trendingScroll');
+  const sorted = [...destinations].sort((a, b) => b.popularity - a.popularity);
+  const top6 = sorted.slice(0, 6);
+
+  const cardHTML = top6.map((d, i) => {
+    const viewers = rand(20, 200);
+    const imgClass = `card-image-${d.id}`;
+    const initials = d.city.charAt(0);
+    const cachedImg = imageCache[d.id];
+    const imgStyle = cachedImg
+      ? `background-image: url(${cachedImg.thumb}); background-size: cover; background-position: center;`
+      : '';
+    const attrText = cachedImg
+      ? `<span class="unsplash-attr">Photo: ${escapeHTML(cachedImg.author)} / Unsplash</span>`
+      : '';
+    return `
+      <div class="destination-card" data-id="${d.id}" style="animation: fade-in-up 0.6s var(--ease-out-expo) ${i * 0.1}s both;">
+        <div class="card-image ${cachedImg ? '' : imgClass}" style="${imgStyle}">
+          ${cachedImg ? '' : `<div class="card-image-placeholder">${initials}</div>`}
+          <div class="card-image-overlay"></div>
+          ${attrText}
+          <div class="card-live-badge">
+            <span class="live-dot"></span>
+            ${viewers} 人正在浏览
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="card-location">
+            <span class="card-country">${d.country}</span>
+          </div>
+          <span class="card-city">${d.city}</span>
+          <div class="card-meta">
+            <div class="card-meta-item">
+              <span class="card-meta-value">${d.weather.icon} ${d.weather.temp}&deg;C</span>
+              <span class="card-meta-label">当前天气</span>
+            </div>
+            <div class="card-meta-item">
+              <span class="card-meta-value">${d.timezone}</span>
+              <span class="card-meta-label">时区</span>
+            </div>
+            <div class="card-meta-item">
+              <span class="card-meta-value">热力 ${d.popularity}</span>
+              <span class="card-meta-label">热度指数</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  container.innerHTML = cardHTML;
+
+  // Click to add to itinerary
+  container.querySelectorAll('.destination-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const id = card.dataset.id;
+      addToItinerary(id);
+    });
+  });
+
+  // Simulate live viewer count updates
+  setInterval(() => {
+    container.querySelectorAll('.card-live-badge').forEach(badge => {
+      const currentViewers = parseInt(badge.textContent);
+      const change = rand(-10, 15);
+      const newViewers = Math.max(5, currentViewers + change);
+      badge.innerHTML = `<span class="live-dot"></span> ${newViewers} 人正在浏览`;
+    });
+  }, 5000);
+})();
+
+// Refresh trending card images after Unsplash loads
+function refreshTrendingImages() {
+  const cards = document.querySelectorAll('.destination-card');
+  cards.forEach(card => {
+    const destId = card.dataset.id;
+    const cachedImg = imageCache[destId];
+    if (!cachedImg) return;
+    const imgDiv = card.querySelector('.card-image');
+    if (!imgDiv) return;
+    // Remove placeholder classes and set background image
+    imgDiv.className = 'card-image';
+    imgDiv.style.backgroundImage = `url(${cachedImg.thumb})`;
+    imgDiv.style.backgroundSize = 'cover';
+    imgDiv.style.backgroundPosition = 'center';
+    // Remove placeholder text
+    const placeholder = imgDiv.querySelector('.card-image-placeholder');
+    if (placeholder) placeholder.remove();
+    // Add attribution
+    const attr = document.createElement('span');
+    attr.className = 'unsplash-attr';
+    attr.textContent = `Photo: ${cachedImg.author} / Unsplash`;
+    imgDiv.appendChild(attr);
+  });
+}
+
+// ---- SEARCH ----
+(function initSearch() {
+  const heroSearch = $('#heroSearch');
+  const plannerSearch = $('#plannerSearch');
+  const heroBtn = $('#heroSearchBtn');
+
+  function performSearch(query, fromHero = false) {
+    if (!query.trim()) {
+      if (!fromHero) renderSearchResults(destinations);
+      return;
+    }
+
+    const q = query.toLowerCase().trim();
+    const results = destinations.filter(d =>
+      d.city.toLowerCase().includes(q) ||
+      d.country.toLowerCase().includes(q) ||
+      d.region.toLowerCase().includes(q)
+    );
+
+    if (fromHero) {
+      $('#planner').scrollIntoView({ behavior: 'smooth' });
+      $('#plannerSearch').value = query;
+    }
+
+    // Show local matches first, then fetch external via geocode
+    renderSearchResults(results);
+    fetchGeocodeResults(query, results);
+  }
+
+  async function fetchGeocodeResults(query, localResults) {
+    try {
+      const resp = await apiFetch(`/proxy/geocode-search?q=${encodeURIComponent(query)}&limit=5`);
+      if (!resp.ok) return;
+      const tips = await resp.json();
+      const localNames = new Set(localResults.map(d => d.city));
+      const external = tips.filter(t => !localNames.has(t.name) && t.lat && t.lng);
+      if (external.length) renderGeocodeResults(external);
+    } catch (e) { /* silent */ }
+  }
+
+  let geocodeResults = [];
+  function renderGeocodeResults(tips) {
+    geocodeResults = tips;
+    const container = $('#searchResults');
+    const existing = container.querySelector('.geocode-section');
+    if (existing) existing.remove();
+
+    const html = `
+      <div class="geocode-section" style="border-top:1px solid var(--border-subtle);margin-top:8px;padding-top:8px;">
+        <div style="padding:4px 12px;font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;">地图搜索</div>
+        ${tips.map(t => `
+          <div class="geocode-item" data-name="${escapeHTML(t.name)}" data-lat="${t.lat}" data-lng="${t.lng}"
+               style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;cursor:pointer;border-radius:var(--radius-sm);transition:background .15s;"
+               onmouseenter="this.style.background='var(--bg-elevated)'" onmouseleave="this.style.background=''">
+            <div>
+              <div style="font-weight:500;">${escapeHTML(t.name)}</div>
+              <div style="font-size:0.75rem;color:var(--text-muted);">${escapeHTML(t.district || t.address || '')}</div>
+            </div>
+            <button class="btn btn-ghost btn-sm geocode-add-btn"
+                    style="white-space:nowrap;"
+                    data-name="${escapeHTML(t.name)}" data-lat="${t.lat}" data-lng="${t.lng}">+ 添加</button>
+          </div>
+        `).join('')}
+      </div>`;
+    container.insertAdjacentHTML('beforeend', html);
+
+    container.querySelectorAll('.geocode-add-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const name = btn.dataset.name;
+        const lat = parseFloat(btn.dataset.lat);
+        const lng = parseFloat(btn.dataset.lng);
+        if (name && lat && lng) {
+          addCustomDestination(name, lat, lng);
+        }
+      });
+    });
+  }
+
+  function addCustomDestination(name, lat, lng) {
+    const customId = 'custom-' + Date.now();
+    destinations.push({
+      id: customId, city: name, country: '中国', region: '自定义',
+      lat, lng, cost: 500, popularity: 50, scenicSpots: 0,
+      trafficScore: 50, priceIndex: 50, crowdLevel: 50, climateScore: 60, nicheScore: 80,
+      interests: [],
+    });
+    addToItinerary(customId);
+    renderSearchResults(destinations.filter(d => d.city.toLowerCase().includes(name.toLowerCase())));
+    $('#plannerSearch').value = name;
+  }
+
+  heroSearch.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') performSearch(heroSearch.value, true);
+  });
+
+  heroBtn.addEventListener('click', () => performSearch(heroSearch.value, true));
+
+  plannerSearch.addEventListener('input', () => performSearch(plannerSearch.value));
+
+  // Initial results
+  renderSearchResults(destinations);
+})();
+
+function renderSearchResults(results) {
+  const container = $('#searchResults');
+  if (!results.length) {
+    container.innerHTML = `
+      <div style="padding: 32px; text-align: center; color: var(--text-muted);">
+        没有找到匹配的目的地
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = results.map(d => {
+    const isAdded = itinerary.some(s => s.id === d.id);
+    return `
+      <div class="search-result-item ${isAdded ? 'added' : ''}" data-id="${d.id}">
+        <div class="search-result-info">
+          <span class="search-result-name">${d.city}, ${d.country}</span>
+          <span class="search-result-country">${d.region} · ${d.timezone}</span>
+        </div>
+        <div class="search-result-meta">
+          <span>${(weatherCache[d.id] && weatherCache[d.id].data) ? weatherCache[d.id].data.icon : d.weather.icon} ${(weatherCache[d.id] && weatherCache[d.id].data) ? weatherCache[d.id].data.temp : d.weather.temp}&deg;C</span>
+          <span>≈${fmtMoney(d.cost)}/天</span>
+        </div>
+        <button class="btn-add ${isAdded ? 'added' : ''}" data-id="${d.id}">
+          ${isAdded ? '已添加' : '添加'}
+        </button>
+      </div>
+    `;
+  }).join('');
+
+  // Click handlers
+  container.querySelectorAll('.search-result-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      if (e.target.classList.contains('btn-add')) return;
+      addToItinerary(item.dataset.id);
+    });
+  });
+
+  container.querySelectorAll('.btn-add').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      addToItinerary(btn.dataset.id);
+    });
+  });
+}
+
+// ---- ITINERARY MANAGEMENT ----
+function addToItinerary(destId) {
+  if (itinerary.some(s => s.id === destId)) {
+    showToast('该目的地已在行程中');
+    return;
+  }
+
+  const dest = destinations.find(d => d.id === destId);
+  if (!dest) return;
+
+  const entry = { ...dest, stayDays: rand(2, 4) };
+  itinerary.push(entry);
+  updateItinerary();
+  renderSearchResults(getFilteredDestinations());
+  updateWeatherWidgets();
+  updateCurrencyInfo();
+  loadAttractionsForItinerary().then(() => renderAttractions());
+  saveState();
+  showToast(`${dest.city}, ${dest.country} 已添加到行程`);
+}
+
+function removeFromItinerary(index) {
+  const removed = itinerary[index];
+  itinerary.splice(index, 1);
+  updateItinerary();
+  renderSearchResults(getFilteredDestinations());
+  updateWeatherWidgets();
+  updateCurrencyInfo();
+  renderAttractions();
+  saveState();
+  if (removed) showToast(`${removed.city} 已从行程中移除`);
+}
+
+function moveStop(fromIndex, toIndex) {
+  if (toIndex < 0 || toIndex >= itinerary.length) return;
+  const [item] = itinerary.splice(fromIndex, 1);
+  itinerary.splice(toIndex, 0, item);
+  updateItinerary();
+  saveState();
+}
+
+function changeStayDays(index, delta) {
+  const newDays = (itinerary[index].stayDays || 2) + delta;
+  if (newDays < 1 || newDays > 14) return;
+  itinerary[index].stayDays = newDays;
+  updateItinerary();
+  saveState();
+}
+
+function syncDateInput() {
+  const input = $('#tripStartDateInput');
+  if (!input) return;
+  const yyyy = tripStartDate.getFullYear();
+  const mm = String(tripStartDate.getMonth() + 1).padStart(2, '0');
+  const dd = String(tripStartDate.getDate()).padStart(2, '0');
+  input.value = `${yyyy}-${mm}-${dd}`;
+}
+
+function updateItinerary() {
+  const timeline = $('#itineraryTimeline');
+  const count = $('#itineraryCount');
+  const empty = $('#itineraryEmpty');
+  const summary = $('#itinerarySummary');
+
+  count.textContent = `${itinerary.length} 站`;
+
+  if (itinerary.length === 0) {
+    timeline.innerHTML = '';
+    timeline.appendChild(empty);
+    empty.style.display = '';
+    summary.style.display = 'none';
+    return;
+  }
+
+  empty.style.display = 'none';
+
+  // Generate dates from trip start date
+  const startDate = new Date(tripStartDate);
+  let currentDate = new Date(startDate);
+
+  timeline.innerHTML = itinerary.map((d, i) => {
+    const stayDays = d.stayDays || 2;
+    const arrivalDate = new Date(currentDate);
+    currentDate.setDate(currentDate.getDate() + stayDays);
+    const departDate = new Date(currentDate);
+
+    const dateFmt = (date) => {
+      const m = date.getMonth() + 1;
+      const day = date.getDate();
+      return `${m}月${day}日`;
+    };
+
+    return `
+      <div class="itinerary-stop" data-index="${i + 1}" style="animation-delay: ${i * 0.08}s;">
+        <div class="itinerary-stop-info">
+          <span class="itinerary-stop-city">${d.city}, ${d.country}</span>
+          <span class="itinerary-stop-dates">${dateFmt(arrivalDate)} - ${dateFmt(departDate)} · <span class="stay-days-control"><button data-action="stayDec" data-index="${i}" class="stay-btn">−</button><span class="stay-days-num">${stayDays}</span>天<button data-action="stayInc" data-index="${i}" class="stay-btn">+</button></span></span>
+        </div>
+        <div class="itinerary-stop-weather">
+          <span class="weather-icon">${(weatherCache[d.id] && weatherCache[d.id].data) ? weatherCache[d.id].data.icon : d.weather.icon}</span>
+          ${(weatherCache[d.id] && weatherCache[d.id].data) ? weatherCache[d.id].data.temp : d.weather.temp}&deg;C
+        </div>
+        <div class="itinerary-stop-actions">
+          ${i > 0 ? `<button title="上移" data-action="up" data-index="${i}">↑</button>` : '<button style="visibility:hidden;">↑</button>'}
+          ${i < itinerary.length - 1 ? `<button title="下移" data-action="down" data-index="${i}">↓</button>` : '<button style="visibility:hidden;">↓</button>'}
+          <button class="remove" title="移除" data-action="remove" data-index="${i}">×</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Action handlers
+  timeline.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const action = btn.dataset.action;
+      const index = parseInt(btn.dataset.index);
+
+      if (action === 'remove') removeFromItinerary(index);
+      if (action === 'up') moveStop(index, index - 1);
+      if (action === 'down') moveStop(index, index + 1);
+      if (action === 'stayInc') changeStayDays(index, 1);
+      if (action === 'stayDec') changeStayDays(index, -1);
+    });
+  });
+
+  // Summary
+  summary.style.display = '';
+  const totalDays = itinerary.reduce((sum, d) => sum + (d.stayDays || 2), 0);
+  const totalBudget = itinerary.reduce((sum, d) => sum + d.cost * (d.stayDays || 2), 0);
+  $('#summaryDays').textContent = `${totalDays} 天`;
+  $('#summaryStops').textContent = `${itinerary.length} 个`;
+  $('#summaryBudget').textContent = fmtMoney(totalBudget);
+}
+
+// ---- WEATHER WIDGETS ----
+function updateWeatherWidgets() {
+  const container = $('#weatherWidgets');
+  if (itinerary.length === 0) {
+    container.innerHTML = `
+      <div style="grid-column: 1/-1; padding: 20px; text-align: center; color: var(--text-muted); font-size: 0.875rem;">
+        添加目的地以查看实时天气
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = itinerary.slice(0, 4).map(d => {
+    const w = (weatherCache[d.id] && weatherCache[d.id].data) ? weatherCache[d.id].data : d.weather;
+    const isLive = !!weatherCache[d.id];
+    const aqCache = airQualityCache[d.id];
+    const aq = aqCache ? aqCache.data : null;
+    const aqInfo = aq ? aqiLevelInfo(aq.aqi) : null;
+    return `
+      <div style="background: var(--bg-deep); border-radius: var(--radius-md); padding: 14px; text-align: center; position: relative;">
+        ${isLive ? '<span class="api-badge live" title="实时数据 · Open-Meteo">●</span>' : ''}
+        <div style="font-size: 2rem; margin-bottom: 4px;">${w.icon}</div>
+        <div style="font-family: var(--font-mono); font-size: 1.25rem; font-weight: 600;">${w.temp}°C</div>
+        <div style="font-size: 0.75rem; color: var(--text-secondary);">${d.city}</div>
+        <div style="font-size: 0.6875rem; color: var(--text-muted);">${w.condition}</div>
+        ${aqInfo ? `<div style="font-size:0.6875rem;margin-top:4px;padding:2px 8px;border-radius:10px;display:inline-block;background:${aqInfo.bg};color:${aqInfo.color};font-weight:600;">AQI ${aq.aqi} ${aqInfo.level}</div>` : ''}
+      </div>
+    `;
+  }).join('');
+
+  if (itinerary.length > 4) {
+    container.innerHTML += `
+      <div style="background: var(--bg-deep); border-radius: var(--radius-md); padding: 14px; text-align: center; display: flex; align-items: center; justify-content: center;">
+        <span style="font-size: 0.8125rem; color: var(--text-muted);">+${itinerary.length - 4} 更多</span>
+      </div>
+    `;
+  }
+}
+
+// ---- CURRENCY INFO ----
+function updateCurrencyInfo() {
+  const container = $('#currencyInfo');
+  if (itinerary.length === 0) {
+    container.innerHTML = `
+      <div style="padding: 12px; text-align: center; color: var(--text-muted); font-size: 0.875rem;">
+        添加目的地以查看消费水平对比
+      </div>
+    `;
+    return;
+  }
+
+  // All destinations CNY — show cost comparison instead of exchange rates
+  const sorted = [...itinerary].sort((a, b) => b.cost - a.cost);
+  container.innerHTML = sorted.slice(0, 4).map((d, i) => {
+    const barWidth = (d.cost / 1200) * 100;
+    const barColor = d.cost > 900 ? 'var(--copper)' : d.cost > 600 ? 'var(--gold)' : 'var(--sage)';
+    return `
+    <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--bg-deep); border-radius: var(--radius-sm);">
+      <div>
+        <div style="font-weight: 600; font-size: 0.875rem;">${d.city}, ${d.region}</div>
+        <div style="font-size: 0.6875rem; color: var(--text-muted);">日均消费参考</div>
+      </div>
+      <div style="text-align: right;">
+        <div style="font-family: var(--font-mono); font-size: 0.9375rem; font-weight: 600; color: ${barColor};">¥${d.cost}</div>
+        <div style="width:60px;height:3px;background:var(--bg-elevated);border-radius:2px;margin-top:2px;">
+          <div style="width:${barWidth}%;height:100%;background:${barColor};border-radius:2px;"></div>
+        </div>
+      </div>
+    </div>
+  `; }).join('');
+}
+
+// ---- LIVE ACTIVITY FEED ----
+(function initActivityFeed() {
+  const list = $('#activityList');
+  const countEl = $('#activityCount');
+
+  function addActivity() {
+    const name = pick(travelerNames);
+    const dest = pick(destinations);
+    const template = pick(activityTemplates);
+    const avatarColor = pick(avatarColors);
+    const time = rand(1, 60);
+
+    const item = {
+      name,
+      location: dest.city,
+      html: template(name, dest.city),
+      color: avatarColor,
+      timeAgo: time <= 1 ? '刚刚' : `${time} 分钟前`,
+      timestamp: Date.now(),
+    };
+
+    activityLog.unshift(item);
+    if (activityLog.length > 50) activityLog.pop();
+
+    // Render
+    const el = document.createElement('div');
+    el.className = 'activity-item';
+    el.style.animationDelay = '0s';
+    el.innerHTML = `
+      <div class="activity-avatar" style="background: ${item.color};">${item.name.charAt(0).toUpperCase()}</div>
+      <div class="activity-content">${item.html}</div>
+      <span class="activity-time">${item.timeAgo}</span>
+    `;
+
+    list.insertBefore(el, list.firstChild);
+
+    // Keep only visible items
+    while (list.children.length > 20) {
+      list.removeChild(list.lastChild);
+    }
+
+    countEl.textContent = `${list.children.length} 条更新`;
+  }
+
+  // Initial activities
+  for (let i = 0; i < 10; i++) {
+    const name = pick(travelerNames);
+    const dest = pick(destinations);
+    const template = pick(activityTemplates);
+    const avatarColor = pick(avatarColors);
+    const timeAgo = `${rand(1, 50)} 分钟前`;
+
+    const el = document.createElement('div');
+    el.className = 'activity-item';
+    el.innerHTML = `
+      <div class="activity-avatar" style="background: ${avatarColor};">${name.charAt(0).toUpperCase()}</div>
+      <div class="activity-content">${template(name, dest.city)}</div>
+      <span class="activity-time">${timeAgo}</span>
+    `;
+    list.appendChild(el);
+  }
+  countEl.textContent = `${list.children.length} 条更新`;
+
+  // Simulate new activities
+  setInterval(() => addActivity(), rand(3000, 8000));
+
+  // Update "time ago" labels
+  setInterval(() => {
+    list.querySelectorAll('.activity-time').forEach(el => {
+      const current = el.textContent;
+      const match = current.match(/(\d+)/);
+      if (match) {
+        const mins = parseInt(match[1]) + 1;
+        if (mins >= 60) {
+          const hours = Math.floor(mins / 60);
+          el.textContent = `${hours} 小时前`;
+        } else {
+          el.textContent = `${mins} 分钟前`;
+        }
+      }
+    });
+  }, 60000);
+})();
+
+// ---- TOAST ----
+function showToast(message) {
+  const existing = document.querySelector('.toast');
+  if (existing) existing.remove();
+
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = message;
+  document.body.appendChild(toast);
+
+  setTimeout(() => {
+    if (toast.parentNode) toast.remove();
+  }, 3000);
+}
+
+// ---- SETTINGS MODAL ----
+// ---- AUTH MODAL (replaces old API key settings) ----
+(function initAuth() {
+  const overlay = $('#settingsOverlay');
+  const btn = $('#settingsBtn');
+  const authForm = $('#authForm');
+  const userInfo = $('#userInfo');
+
+  let lastFocusedEl = null;
+  let authMode = 'login'; // 'login' | 'register'
+
+  function updateAuthUI() {
+    if (currentUser) {
+      // Show user info
+      authForm.style.display = 'none';
+      userInfo.style.display = 'block';
+      $('#displayUsername').textContent = currentUser.username;
+      $('#displayEmail').textContent = currentUser.email || '未设置邮箱';
+    } else {
+      authForm.style.display = 'block';
+      userInfo.style.display = 'none';
+      // Reset form
+      const tabL = $('#authTabLogin');
+      const tabR = $('#authTabRegister');
+      if (authMode === 'login') {
+        tabL.classList.add('selected'); tabR.classList.remove('selected');
+        $('#loginForm').style.display = 'block';
+        $('#registerForm').style.display = 'none';
+      } else {
+        tabR.classList.add('selected'); tabL.classList.remove('selected');
+        $('#loginForm').style.display = 'none';
+        $('#registerForm').style.display = 'block';
+      }
+    }
+  }
+
+  function openSettings() {
+    lastFocusedEl = document.activeElement;
+    updateAuthUI();
+    overlay.style.display = '';
+    setTimeout(() => {
+      if (currentUser) return;
+      if (authMode === 'login') {
+        const el = $('#loginUsername'); if (el) el.focus();
+      } else {
+        const el = $('#regUsername'); if (el) el.focus();
+      }
+    }, 100);
+  }
+
+  function closeSettings() {
+    overlay.style.display = 'none';
+    if (lastFocusedEl && typeof lastFocusedEl.focus === 'function') {
+      lastFocusedEl.focus();
+    }
+  }
+
+  btn.addEventListener('click', openSettings);
+  const navLoginBtn = $('#navLoginBtn');
+  if (navLoginBtn) {
+    navLoginBtn.addEventListener('click', openSettings);
+    // Update text based on auth state
+    if (currentUser) navLoginBtn.textContent = currentUser.username;
+  }
+
+  // Cancel buttons
+  ['#settingsCancel', '#settingsCancel2', '#settingsCancel3'].forEach(sel => {
+    const el = $(sel);
+    if (el) el.addEventListener('click', closeSettings);
+  });
+
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeSettings();
+  });
+
+  // Tab switching
+  $('#authTabLogin').addEventListener('click', () => { authMode = 'login'; updateAuthUI(); });
+  $('#authTabRegister').addEventListener('click', () => { authMode = 'register'; updateAuthUI(); });
+
+  // Login
+  $('#loginBtn').addEventListener('click', async () => {
+    const username = $('#loginUsername').value.trim();
+    const password = $('#loginPassword').value;
+    if (!username || !password) { showToast('请填写用户名和密码'); return; }
+    try {
+      const resp = await apiFetch('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ username, password })
+      });
+      if (!resp.ok) {
+        const err = await resp.json();
+        showToast(err.detail || '登录失败');
+        return;
+      }
+      const data = await resp.json();
+      setAuth(data.access_token, data.user);
+      if (navLoginBtn) navLoginBtn.textContent = data.user.username;
+      showToast(`欢迎回来，${data.user.username}！`);
+      closeSettings();
+      saveState(); // sync itinerary to cloud
+    } catch (e) { showToast('网络错误，请确保后端已启动'); }
+  });
+
+  // Register
+  $('#registerBtn').addEventListener('click', async () => {
+    const username = $('#regUsername').value.trim();
+    const email = $('#regEmail').value.trim();
+    const password = $('#regPassword').value;
+    if (!username || !password) { showToast('请填写用户名和密码'); return; }
+    if (password.length < 6) { showToast('密码至少6位'); return; }
+    try {
+      const resp = await apiFetch('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({ username, email, password })
+      });
+      if (!resp.ok) {
+        const err = await resp.json();
+        showToast(err.detail || '注册失败');
+        return;
+      }
+      const data = await resp.json();
+      setAuth(data.access_token, data.user);
+      if (navLoginBtn) navLoginBtn.textContent = data.user.username;
+      showToast(`注册成功！欢迎，${data.user.username}！`);
+      closeSettings();
+      saveState();
+    } catch (e) { showToast('网络错误，请确保后端已启动'); }
+  });
+
+  // Logout
+  $('#logoutBtn').addEventListener('click', () => {
+    clearAuth();
+    if (navLoginBtn) navLoginBtn.textContent = '登录';
+    updateAuthUI();
+    showToast('已退出登录');
+  });
+
+  // Login on Enter key in password fields
+  $('#loginPassword').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') $('#loginBtn').click();
+  });
+  $('#regPassword').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') $('#registerBtn').click();
+  });
+
+  // ESC to close
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && overlay.style.display !== 'none') {
+      closeSettings();
+    }
+  });
+
+  // Initial UI state
+  if (currentUser && navLoginBtn) navLoginBtn.textContent = currentUser.username;
+  updateAuthUI();
+})();
+
+// ---- ATTRACTIONS RENDERING ----
+function renderAttractions() {
+  const panel = $('#attractionsPanel');
+  const cards = $('#attractionCards');
+
+  if (itinerary.length === 0) {
+    panel.style.display = 'none';
+    return;
+  }
+
+  const firstDest = itinerary[0];
+  const cached = attractionsCache[firstDest.id];
+
+  if (!cached || !cached.data || cached.data.length === 0) {
+    panel.style.display = 'none';
+    return;
+  }
+
+  panel.style.display = '';
+  cards.innerHTML = cached.data.map((a, i) => `
+    <div class="attraction-card">
+      <div class="attraction-index">${i + 1}</div>
+      <div class="attraction-info">
+        <div class="attraction-name">${escapeHTML(a.name)}</div>
+        <div class="attraction-category">${escapeHTML(a.category)}</div>
+      </div>
+      <div class="attraction-distance">${(a.distance / 1000).toFixed(1)} km</div>
+    </div>
+  `).join('');
+}
+
+// ---- SAVE ITINERARY ----
+$('#saveItinerary').addEventListener('click', () => {
+  if (itinerary.length === 0) {
+    showToast('请先添加目的地到行程');
+    return;
+  }
+  saveState();
+  const btn = $('#saveItinerary');
+  const originalText = btn.textContent;
+  btn.textContent = '✓ 已保存';
+  btn.style.background = 'var(--sage)';
+  setTimeout(() => {
+    btn.textContent = originalText;
+    btn.style.background = '';
+  }, 2000);
+  showToast('行程已保存到本地浏览器');
+});
+
+// ---- API-BACKED DATA REFRESH ----
+// Refresh weather & AQI every 15 minutes, exchange rates every 6 hours
+setInterval(async () => {
+  await Promise.all([loadAllWeather(), loadAllAirQuality()]);
+  updateWeatherWidgets();
+  updateItinerary();
+  renderSearchResults(getFilteredDestinations());
+}, 15 * 60 * 1000);
+
+setInterval(async () => {
+  await fetchExchangeRates();
+  updateCurrencyInfo();
+}, 6 * 60 * 60 * 1000);
+
+// ---- INIT STATE ----
+loadState();
+syncDateInput();
+if (itinerary.length > 0) {
+  updateItinerary();
+}
+
+// Date picker sync
+const dateInput = $('#tripStartDateInput');
+if (dateInput) {
+  dateInput.addEventListener('change', (e) => {
+    if (e.target.value) {
+      tripStartDate = new Date(e.target.value + 'T00:00:00');
+      updateItinerary();
+      saveState();
+    }
+  });
+}
+
+// ---- KICK OFF API DATA LOAD (UI updates happen after data is ready) ----
+initAPIData();
+
+// ---- SMOOTH SCROLL FOR NAV LINKS ----
+document.querySelectorAll('.nav-links a').forEach(link => {
+  link.addEventListener('click', (e) => {
+    e.preventDefault();
+    const target = document.querySelector(link.getAttribute('href'));
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // Update active state
+    document.querySelectorAll('.nav-links a').forEach(l => l.classList.remove('active'));
+    link.classList.add('active');
+  });
+});
+
+// ---- HERO SEARCH SCROLL ----
+$('#heroSearchBtn').addEventListener('click', () => {
+  const query = $('#heroSearch').value.trim();
+  if (query) {
+    setTimeout(() => {
+      $('#planner').scrollIntoView({ behavior: 'smooth' });
+    }, 200);
+  }
+});
+
+// ---- MOBILE NAV ----
+(function initMobileNav() {
+  const hamburger = $('#navHamburger');
+  const overlay = $('#mobileNavOverlay');
+  const drawer = $('#mobileNavDrawer');
+  const closeBtn = $('#mobileNavClose');
+
+  function openMobileNav() {
+    hamburger.classList.add('open');
+    hamburger.setAttribute('aria-expanded', 'true');
+    overlay.classList.add('open');
+    drawer.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeMobileNav() {
+    hamburger.classList.remove('open');
+    hamburger.setAttribute('aria-expanded', 'false');
+    overlay.classList.remove('open');
+    drawer.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  hamburger.addEventListener('click', openMobileNav);
+  overlay.addEventListener('click', closeMobileNav);
+  closeBtn.addEventListener('click', closeMobileNav);
+  drawer.querySelectorAll('.mobile-nav-links a').forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      const target = document.querySelector(link.getAttribute('href'));
+      if (target) target.scrollIntoView({ behavior: 'smooth' });
+      closeMobileNav();
+      document.querySelectorAll('.nav-links a').forEach(l => l.classList.remove('active'));
+    });
+  });
+})();
+
+console.log('%c NOMAD %c AI 中国旅游推荐已就绪 ',
+  'background: #c9a44b; color: #0d1220; padding: 4px 8px; font-weight: 700; font-size: 14px; border-radius: 4px 0 0 4px;',
+  'background: #141b2d; color: #e8e5df; padding: 4px 8px; font-size: 14px; border-radius: 0 4px 4px 0;'
+);
+</script>
+
+</body>
+</html>
