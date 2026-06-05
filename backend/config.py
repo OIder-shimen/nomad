@@ -7,9 +7,6 @@ class Settings(BaseSettings):
     geoapify_api_key: str = ""
     amap_web_api_key: str = ""
 
-    # Anthropic
-    anthropic_api_key: str = ""
-
     # Auth
     secret_key: str = "change-me-to-a-random-string-at-least-32-chars"
     access_token_expire_minutes: int = 1440  # 24 hours
