@@ -2502,8 +2502,8 @@ body::before {
           class="chat-input"
           placeholder="描述你的旅行偏好..."
           rows="1"
-          autofocus
         ></textarea>
+        <!-- autofocus removed to prevent page scroll on load -->
         <button id="chatSendBtn" class="chat-send-btn" aria-label="发送">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
         </button>
@@ -2858,6 +2858,8 @@ body::before {
    ============================================================ */
 
 // ---- DATA ----
+// Force page to start at top (prevent autofocus/scroll issues)
+window.scrollTo({ top: 0, behavior: 'instant' });
 // 371 Chinese cities from all-destinations.js; 12-city fallback if that fails to load
 const destinations = (typeof ALL_DESTINATIONS !== 'undefined' && ALL_DESTINATIONS.length > 0)
   ? ALL_DESTINATIONS
@@ -4770,12 +4772,13 @@ function showToast(message) {
     lastFocusedEl = document.activeElement;
     updateAuthUI();
     overlay.style.display = '';
+    window.scrollTo({ top: 0, behavior: 'instant' });
     setTimeout(() => {
       if (currentUser) return;
       if (authMode === 'login') {
-        const el = $('#loginUsername'); if (el) el.focus();
+        const el = $('#loginUsername'); if (el) el.focus({ preventScroll: true });
       } else {
-        const el = $('#regUsername'); if (el) el.focus();
+        const el = $('#regUsername'); if (el) el.focus({ preventScroll: true });
       }
     }, 100);
   }
@@ -4818,9 +4821,12 @@ function showToast(message) {
 
   // Login
   $('#loginBtn').addEventListener('click', async () => {
+    const btn = $('#loginBtn');
     const username = $('#loginUsername').value.trim();
     const password = $('#loginPassword').value;
     if (!username || !password) { showToast('请填写用户名和密码'); return; }
+    btn.disabled = true;
+    btn.textContent = '登录中...';
     try {
       const resp = await apiFetch('/auth/login', {
         method: 'POST',
@@ -4829,6 +4835,8 @@ function showToast(message) {
       if (!resp.ok) {
         const err = await resp.json();
         showToast(err.detail || '登录失败');
+        btn.disabled = false;
+        btn.textContent = '登录';
         return;
       }
       const data = await resp.json();
@@ -4839,16 +4847,23 @@ function showToast(message) {
       closeSettings();
       saveState();
       loadSlots();
-    } catch (e) { showToast('网络错误，请确保后端已启动'); }
+    } catch (e) {
+      showToast('网络错误，请确保后端已启动');
+      btn.disabled = false;
+      btn.textContent = '登录';
+    }
   });
 
   // Register
   $('#registerBtn').addEventListener('click', async () => {
+    const btn = $('#registerBtn');
     const username = $('#regUsername').value.trim();
     const email = $('#regEmail').value.trim();
     const password = $('#regPassword').value;
     if (!username || !password) { showToast('请填写用户名和密码'); return; }
     if (password.length < 6) { showToast('密码至少6位'); return; }
+    btn.disabled = true;
+    btn.textContent = '注册中...';
     try {
       const resp = await apiFetch('/auth/register', {
         method: 'POST',
@@ -4857,7 +4872,9 @@ function showToast(message) {
       if (!resp.ok) {
         const err = await resp.json();
         showToast(err.detail || '注册失败');
-        if (resp.status === 403) loadSlots(); // refresh slots on full
+        if (resp.status === 403) loadSlots();
+        btn.disabled = false;
+        btn.textContent = '注册';
         return;
       }
       const data = await resp.json();
@@ -4868,7 +4885,11 @@ function showToast(message) {
       closeSettings();
       saveState();
       loadSlots();
-    } catch (e) { showToast('网络错误，请确保后端已启动'); }
+    } catch (e) {
+      showToast('网络错误，请确保后端已启动');
+      btn.disabled = false;
+      btn.textContent = '注册';
+    }
   });
 
   // Logout
