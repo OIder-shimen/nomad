@@ -2995,7 +2995,9 @@ const destinations = [
 
 // ---- BACKEND API CONFIGURATION ----
 const API_BASE = (() => {
-  // 开发环境使用 localhost，生产环境使用当前域名的 /api
+  if (typeof window !== 'undefined' && window.location.hostname === 'oider-shimen.github.io') {
+    return 'https://nomad.loca.lt/api';
+  }
   if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
     return window.location.origin + '/api';
   }
