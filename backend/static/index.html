@@ -2878,7 +2878,7 @@ const destinations = (typeof ALL_DESTINATIONS !== 'undefined' && ALL_DESTINATION
 // ---- BACKEND API CONFIGURATION ----
 const API_BASE = (() => {
   if (typeof window !== 'undefined' && window.location.hostname === 'oider-shimen.github.io') {
-    return 'https://nomad.loca.lt/api';
+    return 'https://nomad-matrix.loca.lt/api';
   }
   if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
     return window.location.origin + '/api';
@@ -3033,7 +3033,30 @@ function getFilteredDestinations() {
   );
 }
 
-// ---- UTILS ----
+// ---- CITY IMAGE PLACEHOLDER (colorful gradient based on city name) ----
+const _cityGradientCache = {};
+function cityGradientStyle(destId) {
+  if (_cityGradientCache[destId]) return _cityGradientCache[destId];
+  // Hash the city ID to a hue (0-360)
+  let hash = 0;
+  for (let i = 0; i < destId.length; i++) {
+    hash = ((hash << 5) - hash) + destId.charCodeAt(i);
+    hash |= 0;
+  }
+  const hue = Math.abs(hash) % 360;
+  const sat = 45 + (Math.abs(hash >> 8) % 20);  // 45-65%
+  const light = 18 + (Math.abs(hash >> 16) % 12); // 18-30%
+  const hue2 = (hue + 30 + (hash % 40)) % 360;
+  const gradient = `linear-gradient(135deg, hsl(${hue},${sat}%,${light}%) 0%, hsl(${hue2},${sat+5}%,${light+5}%) 100%)`;
+  _cityGradientCache[destId] = gradient;
+  return gradient;
+}
+
+function cityViewerCount(d) {
+  // Derive viewer count from real popularity data (1-99 scale → viewers)
+  const base = Math.round((d.popularity || 50) * 1.8);
+  return base + rand(-8, 8);
+}
 function $(sel) { return document.querySelector(sel); }
 function $$(sel) { return document.querySelectorAll(sel); }
 function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
@@ -4064,16 +4087,28 @@ window.addEventListener('scroll', () => {
   statEl.textContent = '339';
 })();
 
-// ---- ONLINE COUNT SIMULATION ----
-(function simulateOnlineCount() {
+// ---- REAL ONLINE COUNT (backend heartbeat) ----
+(function realOnlineCount() {
   const el = $('#onlineCount');
-  let count = 2847;
+  const sessionId = 'sess_' + (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36));
 
-  setInterval(() => {
-    count += rand(-15, 20);
-    count = Math.max(2500, Math.min(3500, count));
-    el.textContent = fmt(count);
-  }, 3000);
+  async function pingOnline() {
+    try {
+      const resp = await fetch(API_BASE + '/online/ping', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId }),
+        signal: AbortSignal.timeout(5000)
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        el.textContent = fmt(data.online);
+      }
+    } catch (e) { /* silent — keep last known count */ }
+  }
+
+  pingOnline();
+  setInterval(pingOnline, 30000); // ping every 30s
 })();
 
 // ---- TRENDING CARDS ----
@@ -4119,12 +4154,11 @@ loadDatasetImages();
   }
 
   function buildCardHTML(d, i) {
-    const viewers = rand(20, 200);
     const initials = d.city.charAt(0);
     const cachedImg = imageCache[d.id];
     const imgStyle = cachedImg
       ? `background-image: url(${cachedImg.thumb}); background-size: cover; background-position: center;`
-      : '';
+      : `background: ${cityGradientStyle(d.id)};`;
     const attrText = cachedImg
       ? `<span class="unsplash-attr">Photo: ${escapeHTML(cachedImg.author)} / Unsplash</span>`
       : '';
@@ -4132,12 +4166,12 @@ loadDatasetImages();
     return `
       <div class="destination-card trending-card" data-id="${d.id}" style="animation: fade-in-up 0.5s var(--ease-out-expo) ${i * 0.1}s both;">
         <div class="card-image" style="${imgStyle}">
-          ${cachedImg ? '' : `<div class="card-image-placeholder">${initials}</div>`}
+          ${cachedImg ? '' : `<div class="card-image-placeholder" style="background: transparent;">${initials}</div>`}
           <div class="card-image-overlay"></div>
           ${attrText}
           <div class="card-live-badge">
             <span class="live-dot"></span>
-            ${viewers} 人正在浏览
+            ${cityViewerCount(d)} 人正在浏览
           </div>
         </div>
         <div class="card-body">
