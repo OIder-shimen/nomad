@@ -2334,6 +2334,49 @@ body::before {
   }
   html { scroll-behavior: auto; }
 }
+/* Chat Interface */
+.chat-container { animation: fade-in-up 0.8s var(--ease-out-expo) 0.65s both; max-width: 680px; margin: 0 auto; background: var(--bg-surface); border-radius: var(--radius-xl); border: 1px solid var(--border-subtle); overflow: hidden; display: flex; flex-direction: column; height: 520px; }
+.chat-messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+.chat-welcome { text-align: center; padding: 12px 0 8px; }
+.chat-welcome-avatar { width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, var(--gold), var(--copper)); color: var(--text-inverse); font-size: 1.4rem; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; }
+.chat-welcome-text { font-size: 0.875rem; color: var(--text-secondary); line-height: 1.7; margin-bottom: 16px; }
+.chat-welcome-text strong { color: var(--text-primary); }
+.chat-suggestions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.chat-suggestion-chip { padding: 8px 16px; border-radius: 20px; font-size: 0.8125rem; font-weight: 500; background: var(--bg-elevated); color: var(--text-secondary); border: 1px solid var(--border-subtle); cursor: pointer; transition: all var(--duration-fast); font-family: var(--font-body); }
+.chat-suggestion-chip:hover { border-color: var(--gold); color: var(--gold); background: rgba(201, 164, 75, 0.08); }
+.chat-bubble { max-width: 85%; padding: 12px 16px; border-radius: var(--radius-lg); font-size: 0.875rem; line-height: 1.65; animation: fade-in-up 0.3s var(--ease-out-expo) both; word-break: break-word; }
+.chat-bubble.user { align-self: flex-end; background: var(--bg-elevated); color: var(--text-primary); border-bottom-right-radius: 4px; }
+.chat-bubble.assistant { align-self: flex-start; background: var(--bg-deep); color: var(--text-secondary); border-left: 3px solid var(--gold); border-bottom-left-radius: 4px; }
+.chat-bubble.assistant strong { color: var(--text-primary); }
+.chat-bubble.error { align-self: flex-start; background: rgba(201, 90, 91, 0.1); color: var(--copper); border-left: 3px solid var(--copper); }
+.chat-typing { padding: 0 20px 12px; }
+.typing-bubble { display: inline-flex; gap: 4px; padding: 12px 18px; background: var(--bg-deep); border-radius: var(--radius-lg); border-left: 3px solid var(--gold); }
+.typing-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); animation: typing-bounce 1.4s ease-in-out infinite; }
+.typing-dot:nth-child(1) { animation-delay: 0s; }
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes typing-bounce { 0%, 80%, 100% { opacity: 0.3; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-4px); } }
+.chat-input-area { display: flex; align-items: flex-end; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border-subtle); background: var(--bg-deep); }
+.chat-input { flex: 1; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 10px 14px; color: var(--text-primary); font-family: var(--font-body); font-size: 0.875rem; resize: none; outline: none; max-height: 100px; transition: border-color var(--duration-fast); }
+.chat-input:focus { border-color: var(--gold); }
+.chat-input::placeholder { color: var(--text-muted); }
+.chat-send-btn { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--gold), var(--copper)); border: none; color: var(--text-inverse); cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all var(--duration-fast); }
+.chat-send-btn:hover { transform: scale(1.1); box-shadow: 0 4px 20px rgba(201, 164, 75, 0.4); }
+.chat-send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+.chat-cards { margin-top: 14px; display: flex; flex-direction: column; gap: 10px; }
+.chat-card { background: var(--bg-surface); border-radius: var(--radius-md); border: 1px solid var(--border-subtle); padding: 14px; transition: border-color var(--duration-fast); }
+.chat-card:hover { border-color: var(--gold); }
+.chat-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.chat-card-rank { font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; color: var(--gold); }
+.chat-card-city { font-weight: 600; font-size: 0.9375rem; color: var(--text-primary); }
+.chat-card-cost { font-family: var(--font-mono); font-size: 0.8125rem; color: var(--sage-bright); }
+.chat-card-confidence { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 0.6875rem; font-weight: 700; background: rgba(201, 164, 75, 0.15); color: var(--gold); font-family: var(--font-mono); }
+.chat-card-reasons { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.chat-card-reason { font-size: 0.6875rem; color: var(--text-muted); background: var(--bg-deep); padding: 2px 8px; border-radius: 10px; }
+.chat-card-action { margin-top: 10px; }
+.chat-card-add-btn { padding: 6px 14px; border-radius: var(--radius-sm); font-size: 0.75rem; font-weight: 600; background: var(--bg-elevated); color: var(--text-secondary); border: 1px solid var(--border-subtle); cursor: pointer; transition: all var(--duration-fast); font-family: var(--font-body); }
+.chat-card-add-btn:hover { border-color: var(--gold); color: var(--gold); }
+
 </style>
 </head>
 <body>
@@ -2411,79 +2454,53 @@ body::before {
   <div class="hero-content">
     <div class="hero-badge">
       <span class="hero-badge-dot"></span>
-      深度学习驱动 · 中国境内旅游 · 多源数据融合 · AI
+      AI 对话交互 · 中国境内旅游 · 实时数据融合 · 智能推荐
     </div>
     <h1 class="hero-title">
       探索最美中国<br>让 <em>AI 为你精准规划</em>
     </h1>
     <p class="hero-subtitle">
-      基于深度神经网络的个性化推荐引擎，融合国家统计局消费数据、文化和旅游部 A级景区名录、
-      中国气象局气候数据、交通运输部基础设施数据，为你发现最匹配的中国目的地。
+      与 Nomad AI 旅行助手直接对话。告诉我你的预算、兴趣和偏好，让 AI 为你智能分析、
+      精准匹配最合适的中国目的地，并提供专业的旅行规划建议。
     </p>
 
-    <!-- Personalization Quiz -->
-    <div class="quiz-container">
-      <div class="quiz-row">
-        <span class="quiz-label">预算范围</span>
-        <div class="quiz-slider-group">
-          <span style="font-size:0.75rem;color:var(--text-muted);">¥500</span>
-          <input type="range" class="quiz-slider" id="budgetSlider" min="500" max="5000" step="100" value="1500">
-          <span style="font-size:0.75rem;color:var(--text-muted);">¥5,000</span>
-          <span class="quiz-slider-value" id="budgetDisplay">¥1,500/天</span>
+    <!-- AI Chat Interface -->
+    <div class="chat-container" id="chatContainer">
+      <div class="chat-messages" id="chatMessages">
+        <div class="chat-welcome" id="chatWelcome">
+          <div class="chat-welcome-avatar">&#10022;</div>
+          <div class="chat-welcome-text">
+            <p>你好！我是 <strong>Nomad AI 旅行助手</strong>。</p>
+            <p>告诉我你的旅行偏好，我来为你精准推荐最合适的中国目的地。</p>
+          </div>
+          <div class="chat-suggestions">
+            <button class="chat-suggestion-chip" data-text="推荐适合自然风光的城市">&#9968; 推荐适合自然风光的城市</button>
+            <button class="chat-suggestion-chip" data-text="预算 2000 元/天，喜欢美食和历史文化">&#127860; 预算 2000/天，喜欢美食和历史文化</button>
+            <button class="chat-suggestion-chip" data-text="冬天去哪里暖和又休闲？">&#9728; 冬天去哪里暖和又休闲？</button>
+            <button class="chat-suggestion-chip" data-text="带娃出行，推荐亲子友好城市">&#128106; 带娃出行，推荐亲子友好城市</button>
+          </div>
         </div>
       </div>
 
-      <div class="quiz-row">
-        <span class="quiz-label">兴趣偏好</span>
-        <div class="interest-chips" id="interestChips">
-          <span class="interest-chip" data-tag="自然风光">自然风光</span>
-          <span class="interest-chip" data-tag="历史文化">历史文化</span>
-          <span class="interest-chip" data-tag="美食体验">美食体验</span>
-          <span class="interest-chip" data-tag="户外探险">户外探险</span>
-          <span class="interest-chip" data-tag="休闲度假">休闲度假</span>
-          <span class="interest-chip" data-tag="城市探索">城市探索</span>
+      <div class="chat-typing" id="chatTyping" style="display:none;">
+        <div class="typing-bubble">
+          <span class="typing-dot"></span>
+          <span class="typing-dot"></span>
+          <span class="typing-dot"></span>
         </div>
       </div>
 
-      <div class="quiz-row">
-        <span class="quiz-label">出行风格</span>
-        <div class="style-selector" id="styleSelector">
-          <button class="style-btn" data-style="背包穷游">背包穷游</button>
-          <button class="style-btn selected" data-style="舒适休闲">舒适休闲</button>
-          <button class="style-btn" data-style="奢华体验">奢华体验</button>
-          <button class="style-btn" data-style="亲子家庭">亲子家庭</button>
-        </div>
-        <span class="quiz-label" style="margin-left:20px;">气候偏好</span>
-        <div class="climate-selector" id="climateSelector">
-          <button class="climate-btn" data-climate="温暖">温暖</button>
-          <button class="climate-btn selected" data-climate="温和">温和</button>
-          <button class="climate-btn" data-climate="凉爽">凉爽</button>
-        </div>
-      </div>
-
-      <div class="quiz-row" style="margin-top:8px;">
-        <button class="btn-ai-recommend" id="btnAIRecommend">
-          <span class="ai-sparkle">&#10022;</span>
-          开始 AI 智能推荐
+      <div class="chat-input-area">
+        <textarea
+          id="chatInput"
+          class="chat-input"
+          placeholder="描述你的旅行偏好..."
+          rows="1"
+          autofocus
+        ></textarea>
+        <button id="chatSendBtn" class="chat-send-btn" aria-label="发送">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
         </button>
-        <span style="font-size:0.6875rem;color:var(--text-muted);margin-left:16px;">
-          基于 7 维度特征 · 12 个中国目的地 · 83 项开放数据指标
-        </span>
-      </div>
-
-      <!-- Quick manual search (kept as secondary) -->
-      <div class="quiz-row" style="margin-top:12px; padding-top:14px; border-top:1px solid var(--border-subtle);">
-        <span class="quiz-label" style="color:var(--text-muted);">或直接搜索</span>
-        <input
-          type="text"
-          class="hero-search-input"
-          placeholder="输入目的地名称..."
-          id="heroSearch"
-          autocomplete="off"
-          aria-label="搜索目的地"
-          style="max-width:280px;"
-        >
-        <button class="btn btn-ghost btn-sm" id="heroSearchBtn">搜索</button>
       </div>
     </div>
 
@@ -3498,62 +3515,140 @@ function buildMatchReasons(dest, profile, dims, holiday) {
   return reasons.slice(0, 3);
 }
 
-// ---- QUIZ INTERACTION HANDLERS ----
-(function initQuiz() {
-  // Budget slider
-  const budgetSlider = $('#budgetSlider');
-  const budgetDisplay = $('#budgetDisplay');
-  budgetSlider.addEventListener('input', () => {
-    budgetDisplay.textContent = '¥' + parseInt(budgetSlider.value).toLocaleString() + '/天';
-  });
+// ---- AI CHAT LOGIC ----
+(function initChat() {
+  const chatMessages = $('#chatMessages');
+  const chatInput = $('#chatInput');
+  const chatSendBtn = $('#chatSendBtn');
+  const chatTyping = $('#chatTyping');
+  const chatWelcome = $('#chatWelcome');
 
-  // Interest chips — multi-select
-  $('#interestChips').addEventListener('click', (e) => {
-    const chip = e.target.closest('.interest-chip');
-    if (!chip) return;
-    chip.classList.toggle('selected');
-  });
+  // Conversation history (for backend context)
+  let conversationMessages = [];
 
-  // Travel style — single select
-  $('#styleSelector').addEventListener('click', (e) => {
-    const btn = e.target.closest('.style-btn');
-    if (!btn) return;
-    $('#styleSelector').querySelectorAll('.style-btn').forEach(b => b.classList.remove('selected'));
-    btn.classList.add('selected');
-  });
+  function showTyping() { chatTyping.style.display = ''; }
+  function hideTyping() { chatTyping.style.display = 'none'; }
+  function scrollToBottom() { chatMessages.scrollTop = chatMessages.scrollHeight; }
 
-  // Climate preference — single select
-  $('#climateSelector').addEventListener('click', (e) => {
-    const btn = e.target.closest('.climate-btn');
-    if (!btn) return;
-    $('#climateSelector').querySelectorAll('.climate-btn').forEach(b => b.classList.remove('selected'));
-    btn.classList.add('selected');
-  });
+  function appendBubble(role, text, isHtml) {
+    const div = document.createElement('div');
+    div.className = 'chat-bubble ' + role;
+    if (isHtml) div.innerHTML = text;
+    else div.textContent = text;
+    chatMessages.appendChild(div);
+    scrollToBottom();
+    return div;
+  }
 
-  // AI Recommend button
-  $('#btnAIRecommend').addEventListener('click', () => {
-    const budget = parseInt(budgetSlider.value);
-    const interests = Array.from($('#interestChips').querySelectorAll('.interest-chip.selected')).map(c => c.dataset.tag);
-    const styleBtn = $('#styleSelector').querySelector('.style-btn.selected');
-    const climateBtn = $('#climateSelector').querySelector('.climate-btn.selected');
-    const style = styleBtn ? styleBtn.dataset.style : '舒适休闲';
-    const climate = climateBtn ? climateBtn.dataset.climate : '温和';
+  function appendCards(bubble, cards) {
+    if (!cards || cards.length === 0) return;
+    const wrap = document.createElement('div');
+    wrap.className = 'chat-cards';
+    cards.forEach(card => {
+      const c = document.createElement('div');
+      c.className = 'chat-card';
+      const highlight = card.confidence >= 85 ? '&#9733;' : '';
+      c.innerHTML = `<div class="chat-card-top">
+        <span class="chat-card-rank">#${card.rank}</span>
+        <span class="chat-card-city">${card.city} ${highlight}</span>
+        <span class="chat-card-cost">¥${card.cost}/天</span>
+        <span class="chat-card-confidence">${card.confidence}% 匹配</span>
+      </div>
+      ${card.matchReasons && card.matchReasons.length > 0 ? '<div class="chat-card-reasons">' + card.matchReasons.map(r => '<span class="chat-card-reason">' + r + '</span>').join('') + '</div>' : ''}
+      <div class="chat-card-action">
+        <button class="chat-card-add-btn" data-dest-id="${card.destId}" data-dest-name="${card.city}" data-dest-cost="${card.cost}">+ 加入行程</button>
+      </div>`;
+      c.querySelector('.chat-card-add-btn').addEventListener('click', () => {
+        const dest = destinations.find(d => d.id === card.destId);
+        if (dest) addToItinerary(dest);
+      });
+      wrap.appendChild(c);
+    });
+    bubble.appendChild(wrap);
+    scrollToBottom();
+  }
 
-    if (interests.length === 0) {
-      showToast('请至少选择一个兴趣偏好');
-      return;
+  function markdownToHtml(text) {
+    // Simple markdown: **bold**, *italic*, newlines
+    let html = text
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      .replace(/\n/g, '<br>');
+    return html;
+  }
+
+  async function sendMessage(text) {
+    if (!text.trim()) return;
+
+    // Hide welcome
+    if (chatWelcome) chatWelcome.style.display = 'none';
+
+    // Show user bubble
+    appendBubble('user', text.trim(), false);
+    conversationMessages.push({ role: 'user', content: text.trim() });
+
+    // Show typing
+    showTyping();
+    chatSendBtn.disabled = true;
+    chatInput.value = '';
+
+    try {
+      const resp = await apiFetch('/chat', {
+        method: 'POST',
+        body: JSON.stringify({ messages: conversationMessages }),
+      });
+
+      hideTyping();
+      chatSendBtn.disabled = false;
+      chatInput.focus();
+
+      if (!resp.ok) throw new Error('API error ' + resp.status);
+
+      const data = await resp.json();
+      conversationMessages.push({ role: 'assistant', content: data.text });
+
+      // Render AI text
+      const html = markdownToHtml(data.text);
+      const bubble = appendBubble('assistant', html, true);
+
+      // Render recommendation cards if present
+      if (data.cards && data.cards.length > 0) {
+        appendCards(bubble, data.cards);
+      }
+    } catch (err) {
+      hideTyping();
+      chatSendBtn.disabled = false;
+      console.error('Chat error:', err);
+      appendBubble('error', '抱歉，AI 服务暂时不可用，请稍后再试。', false);
     }
+  }
 
-    const profile = { budget, interests, style, climate };
-    const results = computeRecommendations(profile);
-    renderRecommendations(results, profile);
+  // Send button
+  chatSendBtn.addEventListener('click', () => sendMessage(chatInput.value));
 
-    // Show and scroll to results
-    const recSection = $('#recommendations');
-    recSection.style.display = '';
-    setTimeout(() => {
-      recSection.scrollIntoView({ behavior: 'smooth' });
-    }, 150);
+  // Enter to send, Shift+Enter for newline
+  chatInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage(chatInput.value);
+    }
+  });
+
+  // Auto-resize textarea
+  chatInput.addEventListener('input', () => {
+    chatInput.style.height = 'auto';
+    chatInput.style.height = Math.min(chatInput.scrollHeight, 100) + 'px';
+  });
+
+  // Suggestion chips
+  document.querySelectorAll('.chat-suggestion-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const text = chip.dataset.text;
+      appendBubble('user', text, false);
+      conversationMessages.push({ role: 'user', content: text });
+      if (chatWelcome) chatWelcome.style.display = 'none';
+      sendMessage(text);
+    });
   });
 })();
 
