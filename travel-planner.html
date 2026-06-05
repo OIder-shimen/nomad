@@ -2752,8 +2752,8 @@ body::before {
     </div>
     <div class="feature-card">
       <div class="feature-icon">&#9733;</div>
-      <h3>本地达人推荐</h3>
-      <p>连接全国 50 万本地达人，获取最地道的特色美食、景点和文化体验推荐，告别游客陷阱。</p>
+      <h3>家庭生活好帮手</h3>
+      <p>为家庭出行提供一站式智能服务，从亲子景点推荐到老人友好行程规划，让全家出游省心又安心。</p>
     </div>
     <div class="feature-card">
       <div class="feature-icon">&#9788;</div>
@@ -3085,10 +3085,11 @@ function weatherConditionForCode(code) {
   return '雷暴';
 }
 
-// ---- Weather (via backend → Open-Meteo) ----
+// ---- Weather (direct Open-Meteo call — free, no API key, CORS-enabled) ----
 async function fetchWeatherFromAPI(lat, lng) {
   try {
-    const resp = await apiFetch(`/proxy/weather?lat=${lat}&lng=${lng}`);
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true`;
+    const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const json = await resp.json();
     const cw = json.current_weather;
@@ -3181,9 +3182,25 @@ function getRateForCurrency(currency) {
 // ---- Unsplash Images (via backend — API key server-side) ----
 
 // Route Unsplash CDN URLs through backend proxy to bypass GFW blocking
+let _backendOnline = null; // null = unchecked, true/false after check
+
+async function checkBackendHealth() {
+  try {
+    const resp = await fetch(API_BASE + '/auth/slots', { signal: AbortSignal.timeout(5000) });
+    _backendOnline = resp.ok;
+  } catch (e) {
+    _backendOnline = false;
+  }
+  return _backendOnline;
+}
+// Kick off health check early
+checkBackendHealth();
+
 function proxyImageUrl(url) {
   if (!url) return '';
   if (url.includes('images.unsplash.com') || url.includes('plus.unsplash.com')) {
+    // If backend is known to be down, try direct (may fail under GFW but won't hang on proxy)
+    if (_backendOnline === false) return url;
     return API_BASE + '/proxy/image?url=' + encodeURIComponent(url);
   }
   return url;
@@ -3192,6 +3209,8 @@ function proxyImageUrl(url) {
 async function fetchDestinationImage(destId) {
   const dest = destinations.find(d => d.id === destId);
   if (!dest) return null;
+  // Skip API call if backend is known down
+  if (_backendOnline === false) return null;
   try {
     const query = encodeURIComponent(`${dest.city} ${dest.country} landmark travel`);
     const resp = await apiFetch(`/proxy/unsplash-photo?query=${query}`);
@@ -3210,15 +3229,27 @@ async function fetchDestinationImage(destId) {
 }
 
 async function loadAllImages(limit = 12) {
+  // Only fetch images that aren't already cached
   const datasetIds = new Set(Object.keys(typeof destinationPhotos !== 'undefined' ? destinationPhotos : {}));
   const top = [...destinations].sort((a, b) => b.popularity - a.popularity).slice(0, limit);
-  const promises = top.map(async (d) => {
-    if (imageCache[d.id] && datasetIds.has(d.id)) return;
-    if (imageCache[d.id]) return;
-    const data = await fetchDestinationImage(d.id);
-    if (data) imageCache[d.id] = data;
-  });
-  await Promise.allSettled(promises);
+  const needed = top.filter(d => !imageCache[d.id]);
+
+  // Batch: max 3 concurrent, fast timeout
+  const BATCH = 3;
+  for (let i = 0; i < needed.length; i += BATCH) {
+    const batch = needed.slice(i, i + BATCH);
+    await Promise.allSettled(
+      batch.map(async (d) => {
+        if (imageCache[d.id]) return;
+        const data = await fetchDestinationImage(d.id);
+        if (data) imageCache[d.id] = data;
+      })
+    );
+    // Small delay between batches
+    if (i + BATCH < needed.length) {
+      await new Promise(r => setTimeout(r, 300));
+    }
+  }
 }
 
 // ---- Dataset Image Loader ----
