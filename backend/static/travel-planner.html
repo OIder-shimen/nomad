@@ -1106,99 +1106,6 @@ body::before {
 }
 
 /* ============================================================
-   LIVE ACTIVITY FEED
-   ============================================================ */
-.activity-feed {
-  background: var(--bg-surface);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border-subtle);
-  padding: 24px;
-  max-height: 360px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.activity-feed-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.activity-feed-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.activity-list {
-  flex: 1;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.activity-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  border-radius: var(--radius-sm);
-  animation: fade-in-up 0.4s var(--ease-out-expo) both;
-  transition: background var(--duration-fast);
-}
-
-.activity-item:hover {
-  background: var(--bg-deep);
-}
-
-.activity-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.75rem;
-  font-weight: 700;
-  flex-shrink: 0;
-  color: var(--text-inverse);
-}
-
-.activity-content {
-  flex: 1;
-  font-size: 0.8125rem;
-  color: var(--text-secondary);
-  line-height: 1.4;
-}
-
-.activity-content strong {
-  color: var(--text-primary);
-  font-weight: 600;
-}
-
-.activity-content .location {
-  color: var(--gold);
-  font-weight: 500;
-}
-
-.activity-time {
-  font-size: 0.6875rem;
-  color: var(--text-muted);
-  font-family: var(--font-mono);
-  flex-shrink: 0;
-}
-
-/* ============================================================
    SECTION: FEATURES
    ============================================================ */
 .features-grid {
@@ -2441,7 +2348,6 @@ body::before {
     <li><a href="#discover" class="active">发现</a></li>
     <li><a href="#planner">行程规划</a></li>
     <li><a href="#features">特色功能</a></li>
-    <li><a href="#live">实时动态</a></li>
   </ul>
   <div class="nav-actions">
     <div class="nav-live-indicator">
@@ -2468,7 +2374,6 @@ body::before {
     <li><a href="#discover">发现</a></li>
     <li><a href="#planner">行程规划</a></li>
     <li><a href="#features">特色功能</a></li>
-    <li><a href="#live">实时动态</a></li>
   </ul>
 </div>
 
@@ -2803,58 +2708,6 @@ body::before {
   </div>
 </section>
 
-<!-- Live Activity + Features side by side -->
-<section class="section" id="live">
-  <div class="section-header">
-    <div>
-      <div class="section-eyebrow">实时动态</div>
-      <h2 class="section-title">实时旅行动态</h2>
-    </div>
-  </div>
-
-  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 32px;">
-    <div class="activity-feed">
-      <div class="activity-feed-header">
-        <span class="activity-feed-title">
-          <span class="live-dot"></span> 实时动态
-        </span>
-        <span style="font-size: 0.6875rem; color: var(--text-muted); font-family: var(--font-mono);" id="activityCount">12 条更新</span>
-      </div>
-      <div class="activity-list" id="activityList">
-        <!-- Populated by JS -->
-      </div>
-    </div>
-
-    <div style="display: flex; flex-direction: column; gap: 24px;">
-      <div style="background: var(--bg-surface); border-radius: var(--radius-lg); border: 1px solid var(--border-subtle); padding: 24px;">
-        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-          <div class="feature-icon" style="margin-bottom: 0;">&#9728;</div>
-          <div>
-            <h3 style="font-family: var(--font-display); font-size: 1.125rem; font-weight: 600;">实时天气追踪</h3>
-            <p style="font-size: 0.75rem; color: var(--text-muted);">行程中所有目的地的天气一目了然</p>
-          </div>
-        </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;" id="weatherWidgets">
-          <!-- Populated by JS -->
-        </div>
-      </div>
-
-      <div style="background: var(--bg-surface); border-radius: var(--radius-lg); border: 1px solid var(--border-subtle); padding: 24px;">
-        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-          <div class="feature-icon" style="margin-bottom: 0;">&#9830;</div>
-          <div>
-            <h3 style="font-family: var(--font-display); font-size: 1.125rem; font-weight: 600;">消费水平与当地信息</h3>
-            <p style="font-size: 0.75rem; color: var(--text-muted);">随时掌握最新汇率、签证信息和旅行建议</p>
-          </div>
-        </div>
-        <div id="currencyInfo" style="display: flex; flex-direction: column; gap: 10px;">
-          <!-- Populated by JS -->
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
 <!-- Features -->
 <section class="section" id="features">
   <div class="section-header">
@@ -3089,22 +2942,10 @@ const ratesCache = {};      // { data, timestamp }
 const imageCache = {};      // keyed by dest.id: { url, author, authorUrl }
 const attractionsCache = {};// keyed by dest.id: { data, timestamp }
 
-const avatarColors = ['#c9a44b', '#c97a5b', '#7ba58d', '#6b8fbf', '#b87c9b', '#8b9e7c', '#c47d5a', '#7b8eb5'];
-const travelerNames = ['晓月', '明哲', '思远', '雨桐', '浩然', '子涵', '一诺', '俊杰', '诗涵', '宇轩', '欣怡', '梓豪', '若曦', '天佑', '语嫣'];
-
-const activityTemplates = [
-  (n, l) => `<strong>${n}</strong> 正在规划前往 <span class="location">${l}</span> 的行程`,
-  (n, l) => `<strong>${n}</strong> 将 <span class="location">${l}</span> 加入了心愿单`,
-  (n, l) => `<strong>${n}</strong> 预订了飞往 <span class="location">${l}</span> 的机票`,
-  (n, l) => `<strong>${n}</strong> 在 <span class="location">${l}</span> 找到了超值酒店`,
-  (n, l) => `<strong>${n}</strong> 分享了 <span class="location">${l}</span> 的旅行攻略`,
-  (n, l) => `<strong>${n}</strong> 抵达了 <span class="location">${l}</span>`,
-];
 
 // ---- STATE ----
 let itinerary = [];
 let tripStartDate = new Date();
-let activityLog = [];
 
 const STORAGE_KEY = 'nomad_itinerary';
 const START_DATE_KEY = 'nomad_trip_start';
@@ -3453,8 +3294,6 @@ async function initAPIData() {
   ]);
 
   // 3. Update UI with live data
-  updateWeatherWidgets();
-  updateCurrencyInfo();
   refreshTrendingImages();
   if (itinerary.length > 0) {
     updateItinerary();
@@ -4232,8 +4071,6 @@ function addToItinerary(destId) {
   itinerary.push(entry);
   updateItinerary();
   renderSearchResults(getFilteredDestinations());
-  updateWeatherWidgets();
-  updateCurrencyInfo();
   loadAttractionsForItinerary().then(() => renderAttractions());
   saveState();
   showToast(`${dest.city}, ${dest.country} 已添加到行程`);
@@ -4244,8 +4081,6 @@ function removeFromItinerary(index) {
   itinerary.splice(index, 1);
   updateItinerary();
   renderSearchResults(getFilteredDestinations());
-  updateWeatherWidgets();
-  updateCurrencyInfo();
   renderAttractions();
   saveState();
   if (removed) showToast(`${removed.city} 已从行程中移除`);
@@ -4353,161 +4188,7 @@ function updateItinerary() {
   $('#summaryBudget').textContent = fmtMoney(totalBudget);
 }
 
-// ---- WEATHER WIDGETS ----
-function updateWeatherWidgets() {
-  const container = $('#weatherWidgets');
-  if (itinerary.length === 0) {
-    container.innerHTML = `
-      <div style="grid-column: 1/-1; padding: 20px; text-align: center; color: var(--text-muted); font-size: 0.875rem;">
-        添加目的地以查看实时天气
-      </div>
-    `;
-    return;
-  }
 
-  container.innerHTML = itinerary.slice(0, 4).map(d => {
-    const w = (weatherCache[d.id] && weatherCache[d.id].data) ? weatherCache[d.id].data : d.weather;
-    const isLive = !!weatherCache[d.id];
-    const aqCache = airQualityCache[d.id];
-    const aq = aqCache ? aqCache.data : null;
-    const aqInfo = aq ? aqiLevelInfo(aq.aqi) : null;
-    return `
-      <div style="background: var(--bg-deep); border-radius: var(--radius-md); padding: 14px; text-align: center; position: relative;">
-        ${isLive ? '<span class="api-badge live" title="实时数据 · Open-Meteo">●</span>' : ''}
-        <div style="font-size: 2rem; margin-bottom: 4px;">${w.icon}</div>
-        <div style="font-family: var(--font-mono); font-size: 1.25rem; font-weight: 600;">${w.temp}°C</div>
-        <div style="font-size: 0.75rem; color: var(--text-secondary);">${d.city}</div>
-        <div style="font-size: 0.6875rem; color: var(--text-muted);">${w.condition}</div>
-        ${aqInfo ? `<div style="font-size:0.6875rem;margin-top:4px;padding:2px 8px;border-radius:10px;display:inline-block;background:${aqInfo.bg};color:${aqInfo.color};font-weight:600;">AQI ${aq.aqi} ${aqInfo.level}</div>` : ''}
-      </div>
-    `;
-  }).join('');
-
-  if (itinerary.length > 4) {
-    container.innerHTML += `
-      <div style="background: var(--bg-deep); border-radius: var(--radius-md); padding: 14px; text-align: center; display: flex; align-items: center; justify-content: center;">
-        <span style="font-size: 0.8125rem; color: var(--text-muted);">+${itinerary.length - 4} 更多</span>
-      </div>
-    `;
-  }
-}
-
-// ---- CURRENCY INFO ----
-function updateCurrencyInfo() {
-  const container = $('#currencyInfo');
-  if (itinerary.length === 0) {
-    container.innerHTML = `
-      <div style="padding: 12px; text-align: center; color: var(--text-muted); font-size: 0.875rem;">
-        添加目的地以查看消费水平对比
-      </div>
-    `;
-    return;
-  }
-
-  // All destinations CNY — show cost comparison instead of exchange rates
-  const sorted = [...itinerary].sort((a, b) => b.cost - a.cost);
-  container.innerHTML = sorted.slice(0, 4).map((d, i) => {
-    const barWidth = (d.cost / 1200) * 100;
-    const barColor = d.cost > 900 ? 'var(--copper)' : d.cost > 600 ? 'var(--gold)' : 'var(--sage)';
-    return `
-    <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--bg-deep); border-radius: var(--radius-sm);">
-      <div>
-        <div style="font-weight: 600; font-size: 0.875rem;">${d.city}, ${d.region}</div>
-        <div style="font-size: 0.6875rem; color: var(--text-muted);">日均消费参考</div>
-      </div>
-      <div style="text-align: right;">
-        <div style="font-family: var(--font-mono); font-size: 0.9375rem; font-weight: 600; color: ${barColor};">¥${d.cost}</div>
-        <div style="width:60px;height:3px;background:var(--bg-elevated);border-radius:2px;margin-top:2px;">
-          <div style="width:${barWidth}%;height:100%;background:${barColor};border-radius:2px;"></div>
-        </div>
-      </div>
-    </div>
-  `; }).join('');
-}
-
-// ---- LIVE ACTIVITY FEED ----
-(function initActivityFeed() {
-  const list = $('#activityList');
-  const countEl = $('#activityCount');
-
-  function addActivity() {
-    const name = pick(travelerNames);
-    const dest = pick(destinations);
-    const template = pick(activityTemplates);
-    const avatarColor = pick(avatarColors);
-    const time = rand(1, 60);
-
-    const item = {
-      name,
-      location: dest.city,
-      html: template(name, dest.city),
-      color: avatarColor,
-      timeAgo: time <= 1 ? '刚刚' : `${time} 分钟前`,
-      timestamp: Date.now(),
-    };
-
-    activityLog.unshift(item);
-    if (activityLog.length > 50) activityLog.pop();
-
-    // Render
-    const el = document.createElement('div');
-    el.className = 'activity-item';
-    el.style.animationDelay = '0s';
-    el.innerHTML = `
-      <div class="activity-avatar" style="background: ${item.color};">${item.name.charAt(0).toUpperCase()}</div>
-      <div class="activity-content">${item.html}</div>
-      <span class="activity-time">${item.timeAgo}</span>
-    `;
-
-    list.insertBefore(el, list.firstChild);
-
-    // Keep only visible items
-    while (list.children.length > 20) {
-      list.removeChild(list.lastChild);
-    }
-
-    countEl.textContent = `${list.children.length} 条更新`;
-  }
-
-  // Initial activities
-  for (let i = 0; i < 10; i++) {
-    const name = pick(travelerNames);
-    const dest = pick(destinations);
-    const template = pick(activityTemplates);
-    const avatarColor = pick(avatarColors);
-    const timeAgo = `${rand(1, 50)} 分钟前`;
-
-    const el = document.createElement('div');
-    el.className = 'activity-item';
-    el.innerHTML = `
-      <div class="activity-avatar" style="background: ${avatarColor};">${name.charAt(0).toUpperCase()}</div>
-      <div class="activity-content">${template(name, dest.city)}</div>
-      <span class="activity-time">${timeAgo}</span>
-    `;
-    list.appendChild(el);
-  }
-  countEl.textContent = `${list.children.length} 条更新`;
-
-  // Simulate new activities
-  setInterval(() => addActivity(), rand(3000, 8000));
-
-  // Update "time ago" labels
-  setInterval(() => {
-    list.querySelectorAll('.activity-time').forEach(el => {
-      const current = el.textContent;
-      const match = current.match(/(\d+)/);
-      if (match) {
-        const mins = parseInt(match[1]) + 1;
-        if (mins >= 60) {
-          const hours = Math.floor(mins / 60);
-          el.textContent = `${hours} 小时前`;
-        } else {
-          el.textContent = `${mins} 分钟前`;
-        }
-      }
-    });
-  }, 60000);
-})();
 
 // ---- TOAST ----
 function showToast(message) {
@@ -4734,14 +4415,12 @@ $('#saveItinerary').addEventListener('click', () => {
 // Refresh weather & AQI every 15 minutes, exchange rates every 6 hours
 setInterval(async () => {
   await Promise.all([loadAllWeather(), loadAllAirQuality()]);
-  updateWeatherWidgets();
   updateItinerary();
   renderSearchResults(getFilteredDestinations());
 }, 15 * 60 * 1000);
 
 setInterval(async () => {
   await fetchExchangeRates();
-  updateCurrencyInfo();
 }, 6 * 60 * 60 * 1000);
 
 // ---- INIT STATE ----
