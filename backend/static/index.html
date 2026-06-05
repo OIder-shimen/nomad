@@ -3580,40 +3580,84 @@ function buildMatchReasons(dest, profile, dims, holiday) {
   async function sendMessage(text) {
     if (!text.trim()) return;
 
-    // Hide welcome
     if (chatWelcome) chatWelcome.style.display = 'none';
 
-    // Show user bubble
     appendBubble('user', text.trim(), false);
     conversationMessages.push({ role: 'user', content: text.trim() });
 
-    // Show typing
     showTyping();
     chatSendBtn.disabled = true;
     chatInput.value = '';
 
     try {
-      const resp = await apiFetch('/chat', {
+      // Build system prompt with all destination data for AI recommendations
+      const destSummary = destinations.map(d =>
+        `- ${d.city}(${d.region}, id:${d.id}): 日均¥${d.cost}, 兴趣[${d.interests.join(',')}], 气候${d.climateScore}/100, 交通${d.trafficScore}/100, 拥挤${d.crowdLevel}/100, 景点数${d.scenicSpots}, 小众度${d.nicheScore}/100`
+      ).join('\n');
+
+      const systemPrompt = `你是 Nomad AI 旅行规划助手，专门帮助用户在中国境内寻找最佳旅游目的地。你必须通过对话理解用户的偏好（预算、兴趣、季节、风格等），然后从下方目的地数据库中匹配最合适的目的地。
+
+## 目的地数据库
+${destSummary}
+
+## 回复格式
+1. 先以自然对话方式回复用户，给出你的推荐理由
+2. 如果你的回复中推荐了具体目的地，请在回复末尾附加一个 JSON 代码块，格式如下：
+\`\`\`json
+{"destinations": [{"destId": "beijing", "city": "北京", "cost": 1000, "confidence": 90, "rank": 1, "matchReasons": ["历史文化丰富", "交通便利"]}]}
+\`\`\`
+confidence 是 0-100 的匹配度评分，rank 从 1 开始递增，matchReasons 列出 2-4 个推荐理由。`;
+
+      const resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
         method: 'POST',
-        body: JSON.stringify({ messages: conversationMessages }),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer sk-e5c1d9d397a4470b863176f2ad0ac295'
+        },
+        body: JSON.stringify({
+          model: 'deepseek-chat',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            ...conversationMessages
+          ],
+          temperature: 0.7,
+          max_tokens: 2000
+        })
       });
 
       hideTyping();
       chatSendBtn.disabled = false;
       chatInput.focus();
 
-      if (!resp.ok) throw new Error('API error ' + resp.status);
+      if (!resp.ok) {
+        const errText = await resp.text();
+        throw new Error('API error ' + resp.status + ': ' + errText);
+      }
 
       const data = await resp.json();
-      conversationMessages.push({ role: 'assistant', content: data.text });
+      const replyText = data.choices[0].message.content;
+      conversationMessages.push({ role: 'assistant', content: replyText });
 
-      // Render AI text
-      const html = markdownToHtml(data.text);
+      // Parse JSON block from response
+      const jsonMatch = replyText.match(/```json\s*([\s\S]*?)\s*```/);
+      let cards = null;
+      let displayText = replyText;
+
+      if (jsonMatch) {
+        try {
+          const parsed = JSON.parse(jsonMatch[1]);
+          cards = parsed.destinations || parsed;
+          displayText = replyText.replace(/```json[\s\S]*?```/, '').trim();
+        } catch (e) {
+          console.error('Failed to parse recommendation JSON:', e);
+        }
+      }
+
+      const html = markdownToHtml(displayText);
       const bubble = appendBubble('assistant', html, true);
 
-      // Render recommendation cards if present
-      if (data.cards && data.cards.length > 0) {
-        appendCards(bubble, data.cards);
+      if (cards && cards.length > 0) {
+        appendCards(bubble, cards);
       }
     } catch (err) {
       hideTyping();
@@ -3643,11 +3687,8 @@ function buildMatchReasons(dest, profile, dims, holiday) {
   // Suggestion chips
   document.querySelectorAll('.chat-suggestion-chip').forEach(chip => {
     chip.addEventListener('click', () => {
-      const text = chip.dataset.text;
-      appendBubble('user', text, false);
-      conversationMessages.push({ role: 'user', content: text });
       if (chatWelcome) chatWelcome.style.display = 'none';
-      sendMessage(text);
+      sendMessage(chip.dataset.text);
     });
   });
 })();
