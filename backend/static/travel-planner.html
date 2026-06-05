@@ -2859,7 +2859,7 @@ body::before {
 
 // ---- DATA ----
 // Force page to start at top (prevent autofocus/scroll issues)
-window.scrollTo({ top: 0, behavior: 'instant' });
+window.scrollTo(0, 0);
 // 371 Chinese cities from all-destinations.js; 12-city fallback if that fails to load
 const destinations = (typeof ALL_DESTINATIONS !== 'undefined' && ALL_DESTINATIONS.length > 0)
   ? ALL_DESTINATIONS
@@ -2912,7 +2912,11 @@ function clearAuth() {
 }
 
 async function apiFetch(path, options = {}) {
-  const headers = { 'Content-Type': 'application/json', ...options.headers };
+  const headers = {
+    'Content-Type': 'application/json',
+    'Bypass-Tunnel-Reminder': 'true',
+    ...options.headers
+  };
   if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
   const resp = await fetch(`${API_BASE}${path}`, { ...options, headers });
   if (resp.status === 401) { clearAuth(); }
@@ -3212,7 +3216,10 @@ let _backendOnline = null; // null = unchecked, true/false after check
 
 async function checkBackendHealth() {
   try {
-    const resp = await fetch(API_BASE + '/auth/slots', { signal: AbortSignal.timeout(5000) });
+    const resp = await fetch(API_BASE + '/auth/slots', {
+      headers: { 'Bypass-Tunnel-Reminder': 'true' },
+      signal: AbortSignal.timeout(5000)
+    });
     _backendOnline = resp.ok;
   } catch (e) {
     _backendOnline = false;
@@ -4179,7 +4186,7 @@ window.addEventListener('scroll', () => {
     try {
       const resp = await fetch(API_BASE + '/online/ping', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Bypass-Tunnel-Reminder': 'true' },
         body: JSON.stringify({ session_id: sessionId }),
         signal: AbortSignal.timeout(5000)
       });
@@ -4772,7 +4779,7 @@ function showToast(message) {
     lastFocusedEl = document.activeElement;
     updateAuthUI();
     overlay.style.display = '';
-    window.scrollTo({ top: 0, behavior: 'instant' });
+    window.scrollTo(0, 0);
     setTimeout(() => {
       if (currentUser) return;
       if (authMode === 'login') {
