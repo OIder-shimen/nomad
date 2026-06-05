@@ -1,36 +1,64 @@
 """
-Fetch 30 Unsplash photos per city and regenerate destinations-photos.js.
-Uses 2 short queries per city for variety (24 total API requests, well under 50/hr limit).
+Fetch Unsplash photos for all Chinese cities and update destinations-photos.js.
+Supports batched execution to stay within 50 req/hr API limit.
+
+Usage:
+  python fetch_city_photos.py            # fetch all (may take hours)
+  python fetch_city_photos.py 0 25       # batch: cities 0-24
+  python fetch_city_photos.py 25 50      # next batch
 """
 import json
 import os
+import sys
 import time
 import urllib.request
 import urllib.parse
 
 UNSPLASH_KEY = "OKB5oL2NfsMAZkJwHoE41mRfzK0Sk7_6n1OY2RMr2JI"
-PER_QUERY = 20  # max per_page we request
+PER_QUERY = 10
+TARGET_PER_CITY = 3
 OUTPUT = os.path.join(os.path.dirname(__file__), "destinations-photos.js")
-
-# Two short queries per city for variety (~40 candidates, then dedup to top 30)
-CITY_QUERIES = {
-    "beijing":      ["Beijing China landmark", "Beijing travel"],
-    "shanghai":     ["Shanghai China skyline", "Shanghai Bund"],
-    "chengdu":      ["Chengdu China street", "Chengdu panda"],
-    "lijiang":      ["Lijiang China old town", "Lijiang Yunnan"],
-    "sanya":        ["Sanya China beach", "Sanya Hainan"],
-    "xian":         ["Xian China ancient", "Xian terracotta"],
-    "guilin":       ["Guilin China landscape", "Guilin Li River"],
-    "lhasa":        ["Lhasa Tibet Potala", "Lhasa monastery"],
-    "zhangjiajie":  ["Zhangjiajie China mountain", "Zhangjiajie pillar"],
-    "xiamen":       ["Xiamen China island", "Xiamen Gulangyu"],
-    "harbin":       ["Harbin China ice", "Harbin winter"],
-    "dunhuang":     ["Dunhuang China desert", "Dunhuang Mogao"],
-}
+ALL_CITIES = os.path.join(os.path.dirname(__file__), "backend", "all_cities.json")
 
 
-def search_photos(query, per_page=30):
-    """Search Unsplash, return list of photo dicts."""
+def load_cities(batch_start=0, batch_end=None):
+    """Load city data from all_cities.json, return [(id, city, region), ...] sorted by popularity."""
+    with open(ALL_CITIES, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    items = data.get("items", [])
+    items.sort(key=lambda c: c.get("popularity", 0), reverse=True)
+    if batch_end is None:
+        batch_end = len(items)
+    cities = []
+    for c in items[batch_start:batch_end]:
+        city_name = c["city"]
+        region = c.get("region", "")
+        cities.append((c["id"], city_name, region))
+    return cities
+
+
+def load_existing_photos():
+    """Load existing destinationPhotos from destinations-photos.js if it exists."""
+    if not os.path.exists(OUTPUT):
+        return {}
+    with open(OUTPUT, "r", encoding="utf-8") as f:
+        content = f.read()
+    # Extract JSON between "const destinationPhotos = " and the trailing ";"
+    prefix = "const destinationPhotos = "
+    start = content.find(prefix)
+    if start < 0:
+        return {}
+    start += len(prefix)
+    end = content.rfind(";")
+    if end < 0:
+        end = len(content)
+    try:
+        return json.loads(content[start:end].strip())
+    except json.JSONDecodeError:
+        return {}
+
+
+def search_photos(query, per_page=10):
     url = (
         f"https://api.unsplash.com/search/photos"
         f"?query={urllib.parse.quote(query)}"
@@ -61,16 +89,41 @@ def build_photo(p):
 
 
 def main():
-    output = {}
-    total_requests = 0
-    target = 30
+    batch_start = int(sys.argv[1]) if len(sys.argv) > 1 else 0
+    batch_end = int(sys.argv[2]) if len(sys.argv) > 2 else None
 
-    for dest_id, queries in CITY_QUERIES.items():
+    cities = load_cities(batch_start, batch_end)
+    print(f"Batch: cities {batch_start}-{batch_end or 'ALL'} ({len(cities)} cities)")
+
+    # Load existing photos to avoid re-fetching
+    existing = load_existing_photos()
+    print(f"Existing photos: {len(existing)} cities already have data")
+
+    output = dict(existing)  # copy existing
+    total_requests = 0
+
+    for dest_id, city_name, region in cities:
+        # Skip if already has enough photos
+        if dest_id in existing and len(existing[dest_id]) >= TARGET_PER_CITY:
+            print(f"  {city_name:10s} SKIP (already has {len(existing[dest_id])} photos)")
+            continue
+
+        queries = [
+            f"{city_name} China travel",
+            f"{city_name} {region} landmark"
+        ]
+
         all_photos = []
         seen = set()
+        existing_ids = {p["id"] for p in existing.get(dest_id, [])}
+        seen.update(existing_ids)
 
         for qi, query in enumerate(queries):
-            print(f"  {dest_id:12s} [{qi+1}/2] \"{query}\" ... ", end="", flush=True)
+            if total_requests >= 48:  # stop before hitting 50/hr limit
+                print(f"  HIT RATE LIMIT ({total_requests} requests), stopping batch")
+                break
+
+            print(f"  {city_name:10s} [{qi+1}/2] \"{query}\" ... ", end="", flush=True)
             try:
                 photos = search_photos(query, per_page=PER_QUERY)
                 new_count = 0
@@ -83,30 +136,39 @@ def main():
                 total_requests += 1
             except Exception as e:
                 print(f"FAILED: {e}")
-            time.sleep(1.5)  # be polite to API
+            time.sleep(1.5)
 
-        # Sort by likes, take top N
-        all_photos.sort(key=lambda p: p.get("likes", 0) or 0, reverse=True)
-        output[dest_id] = [build_photo(p) for p in all_photos[:target]]
-        print(f"  => {len(output[dest_id])} photos kept (from {len(all_photos)} candidates)")
+        if all_photos:
+            all_photos.sort(key=lambda p: p.get("likes", 0) or 0, reverse=True)
+            # Merge with existing
+            merged = existing.get(dest_id, []) + [build_photo(p) for p in all_photos]
+            # Dedup by id, keeping order
+            seen_ids = set()
+            unique = []
+            for p in merged:
+                if p["id"] not in seen_ids:
+                    seen_ids.add(p["id"])
+                    unique.append(p)
+            output[dest_id] = unique[:TARGET_PER_CITY * 3]  # keep more than target for cycling
+            print(f"  => {len(output[dest_id])} photos total")
+
+        if total_requests >= 48:
+            break
 
     # Report
     print(f"\n{'='*55}")
-    print(f"Total API requests: {total_requests} / 50 per hour")
-    total_photos = 0
-    for dest_id in CITY_QUERIES:
-        count = len(output.get(dest_id, []))
-        total_photos += count
-        bar = "#" * count
-        print(f"  {dest_id:12s}  {count:2d} photos  {bar}")
-    print(f"  {'TOTAL':12s}  {total_photos:2d} photos")
+    print(f"API requests this batch: {total_requests}")
+    cities_with = sum(1 for v in output.values() if v)
+    total_photos = sum(len(v) for v in output.values())
+    print(f"Cities with photos: {cities_with} / {len(output)}")
+    print(f"Total photos: {total_photos}")
     print(f"{'='*55}")
 
     # Generate JS
     lines = [
         "// Auto-generated by fetch_city_photos.py",
-        "// Unsplash API — curated travel photos for 12 Chinese destinations",
-        f"// Generated photos per destination: { {k: len(v) for k, v in output.items()} }",
+        f"// Unsplash API — photos for {cities_with} Chinese destinations",
+        f"// Generated photos per destination: { {k: len(v) for k, v in sorted(output.items()) if v} }",
         "",
         "const destinationPhotos = " + json.dumps(output, ensure_ascii=False, indent=2) + ";",
         "",

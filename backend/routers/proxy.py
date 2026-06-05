@@ -72,10 +72,23 @@ async def proxy_osm_transport(lat: float = Query(...), lng: float = Query(...)):
 
 
 # ── Unsplash: Destination Images (key required, proxied) ──
+
+_unsplash_cache: dict[str, tuple[dict, float]] = {}
+_UNSPLASH_CACHE_TTL = 86400  # 24 hours
+_MAX_UNSPLASH_CACHE = 500
+
+
 @router.get("/unsplash-photo")
 async def proxy_unsplash_photo(query: str = Query(...)):
     if not settings.unsplash_access_key:
         raise HTTPException(status_code=503, detail="Unsplash API key not configured")
+
+    now = time.time()
+    cache_key = query.strip().lower()
+    cached = _unsplash_cache.get(cache_key)
+    if cached and cached[1] > now:
+        return cached[0]
+
     url = f"https://api.unsplash.com/search/photos?query={query}&orientation=landscape&per_page=1"
     async with httpx.AsyncClient(timeout=10) as client:
         resp = await client.get(
@@ -84,7 +97,15 @@ async def proxy_unsplash_photo(query: str = Query(...)):
         )
         if resp.status_code != 200:
             raise HTTPException(status_code=502, detail="Unsplash API unavailable")
-        return resp.json()
+        data = resp.json()
+
+    # Cache the response
+    if len(_unsplash_cache) >= _MAX_UNSPLASH_CACHE:
+        oldest = min(_unsplash_cache, key=lambda k: _unsplash_cache[k][1])
+        del _unsplash_cache[oldest]
+    _unsplash_cache[cache_key] = (data, now + _UNSPLASH_CACHE_TTL)
+
+    return data
 
 
 # ── Geoapify: Local Attractions (key required, proxied) ──

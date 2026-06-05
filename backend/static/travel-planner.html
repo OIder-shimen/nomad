@@ -2843,15 +2843,20 @@ body::before {
   </div>
 </div>
 
-<!-- Unsplash Dataset: pre-curated destination photos (8 photos x 12 cities) -->
+<!-- Unsplash Dataset: pre-curated destination photos -->
 <script src="destinations-photos.js"></script>
+<!-- All 371 Chinese cities data (generated from backend/all_cities.json) -->
+<script src="all-destinations.js"></script>
 <script>
 /* ============================================================
    NOMAD — Real-Time Travel Planner
    ============================================================ */
 
 // ---- DATA ----
-const destinations = [
+// 371 Chinese cities from all-destinations.js; 12-city fallback if that fails to load
+const destinations = (typeof ALL_DESTINATIONS !== 'undefined' && ALL_DESTINATIONS.length > 0)
+  ? ALL_DESTINATIONS
+  : [
   { id: 'beijing', city: '北京', country: '中国', region: '华北', currency: 'CNY', rate: 1, timezone: 'UTC+8', lat: 39.90, lng: 116.41, weather: { temp: 20, condition: '晴', icon: '☀' }, cost: 1000, popularity: 99, scenicSpots: 238, trafficScore: 98, priceIndex: 120, crowdLevel: 95, climateScore: 68, nicheScore: 3, interests: ['历史文化','城市探索','美食体验'] },
   { id: 'shanghai', city: '上海', country: '中国', region: '华东', currency: 'CNY', rate: 1, timezone: 'UTC+8', lat: 31.23, lng: 121.47, weather: { temp: 22, condition: '多云', icon: '☁' }, cost: 1100, popularity: 98, scenicSpots: 180, trafficScore: 99, priceIndex: 135, crowdLevel: 92, climateScore: 72, nicheScore: 5, interests: ['城市探索','美食体验','休闲度假'] },
   { id: 'chengdu', city: '成都', country: '中国', region: '西南', currency: 'CNY', rate: 1, timezone: 'UTC+8', lat: 30.57, lng: 104.07, weather: { temp: 23, condition: '阴', icon: '☁' }, cost: 600, popularity: 96, scenicSpots: 155, trafficScore: 85, priceIndex: 62, crowdLevel: 75, climateScore: 78, nicheScore: 18, interests: ['美食体验','休闲度假','历史文化'] },
@@ -2908,7 +2913,9 @@ async function apiFetch(path, options = {}) {
 }
 
 // ---- AMAP CITY ADCODE MAPPING ----
-const AMAP_ADCODE = {
+const AMAP_ADCODE = (typeof ALL_AMAP_ADCODE !== 'undefined')
+  ? ALL_AMAP_ADCODE
+  : {
   beijing: '110000', shanghai: '310000', chengdu: '510100',
   lijiang: '530700', sanya: '460200', xian: '610100',
   guilin: '450300', lhasa: '540100', zhangjiajie: '430800',
@@ -3152,6 +3159,16 @@ function getRateForCurrency(currency) {
 }
 
 // ---- Unsplash Images (via backend — API key server-side) ----
+
+// Route Unsplash CDN URLs through backend proxy to bypass GFW blocking
+function proxyImageUrl(url) {
+  if (!url) return '';
+  if (url.includes('images.unsplash.com') || url.includes('plus.unsplash.com')) {
+    return API_BASE + '/proxy/image?url=' + encodeURIComponent(url);
+  }
+  return url;
+}
+
 async function fetchDestinationImage(destId) {
   const dest = destinations.find(d => d.id === destId);
   if (!dest) return null;
@@ -3163,7 +3180,7 @@ async function fetchDestinationImage(destId) {
     if (json.results && json.results.length > 0) {
       const img = json.results[0];
       return {
-        url: img.urls.regular, thumb: img.urls.thumb,
+        url: proxyImageUrl(img.urls.regular), thumb: proxyImageUrl(img.urls.thumb),
         author: img.user.name,
         authorUrl: img.user.links.html + '?utm_source=nomad&utm_medium=referral'
       };
@@ -3172,9 +3189,10 @@ async function fetchDestinationImage(destId) {
   } catch (e) { console.warn('Unsplash fetch failed for', destId, ':', e.message); return null; }
 }
 
-async function loadAllImages() {
+async function loadAllImages(limit = 12) {
   const datasetIds = new Set(Object.keys(typeof destinationPhotos !== 'undefined' ? destinationPhotos : {}));
-  const promises = destinations.map(async (d) => {
+  const top = [...destinations].sort((a, b) => b.popularity - a.popularity).slice(0, limit);
+  const promises = top.map(async (d) => {
     if (imageCache[d.id] && datasetIds.has(d.id)) return;
     if (imageCache[d.id]) return;
     const data = await fetchDestinationImage(d.id);
@@ -3191,7 +3209,7 @@ function loadDatasetImages() {
     // Pick a random photo as primary, store all for cycling
     const top = photos[Math.floor(Math.random() * photos.length)];
     imageCache[destId] = {
-      url: top.url, thumb: top.url, fullUrl: top.fullUrl,
+      url: proxyImageUrl(top.url), thumb: proxyImageUrl(top.url), fullUrl: proxyImageUrl(top.fullUrl),
       author: top.author, authorUrl: top.authorUrl,
       desc: top.desc, blurHash: top.blurHash, allPhotos: photos
     };
@@ -3205,7 +3223,7 @@ function getRandomPhoto(destId) {
   if (!photos || photos.length === 0) return null;
   const p = photos[Math.floor(Math.random() * photos.length)];
   return {
-    url: p.url, thumb: p.url, fullUrl: p.fullUrl,
+    url: proxyImageUrl(p.url), thumb: proxyImageUrl(p.url), fullUrl: proxyImageUrl(p.fullUrl),
     author: p.author, authorUrl: p.authorUrl,
     desc: p.desc, blurHash: p.blurHash
   };
@@ -3222,11 +3240,34 @@ function cyclePhoto(destId) {
   if (idx < 0) idx = 0;
   const p = photos[idx];
   imageCache[destId] = {
-    id: p.id, url: p.url, thumb: p.url, fullUrl: p.fullUrl,
+    id: p.id, url: proxyImageUrl(p.url), thumb: proxyImageUrl(p.url), fullUrl: proxyImageUrl(p.fullUrl),
     author: p.author, authorUrl: p.authorUrl,
     desc: p.desc, blurHash: p.blurHash, allPhotos: photos
   };
   return imageCache[destId];
+}
+
+// On-demand image fetch for cities not in the pre-fetched dataset
+async function ensureCityImage(destId) {
+  if (imageCache[destId]) return imageCache[destId];
+  // Try dataset first
+  if (destinationPhotos && destinationPhotos[destId] && destinationPhotos[destId].length > 0) {
+    const p = destinationPhotos[destId][0];
+    imageCache[destId] = {
+      url: proxyImageUrl(p.url), thumb: proxyImageUrl(p.url),
+      fullUrl: proxyImageUrl(p.fullUrl),
+      author: p.author, authorUrl: p.authorUrl,
+      desc: p.desc, allPhotos: destinationPhotos[destId]
+    };
+    return imageCache[destId];
+  }
+  // Fetch from backend (calls Unsplash API with server-side caching)
+  const data = await fetchDestinationImage(destId);
+  if (data) {
+    imageCache[destId] = { ...data, allPhotos: [data] };
+    return imageCache[destId];
+  }
+  return null;
 }
 
 // ---- Geoapify Attractions (via backend — API key server-side) ----
@@ -3354,7 +3395,9 @@ async function initAPIData() {
 }
 
 // ---- 5A/4A SCENIC SPOT DATABASE (static open data) ----
-const SCENIC_SPOTS = {
+const SCENIC_SPOTS = (typeof ALL_SCENIC_SPOTS !== 'undefined')
+  ? ALL_SCENIC_SPOTS
+  : {
   beijing: [{name:'故宫博物院',grade:'5A'},{name:'八达岭长城',grade:'5A'},{name:'颐和园',grade:'5A'},{name:'天坛公园',grade:'5A'},{name:'明十三陵',grade:'5A'},{name:'恭王府',grade:'5A'},{name:'圆明园遗址公园',grade:'5A'},{name:'雍和宫',grade:'4A'}],
   shanghai: [{name:'东方明珠',grade:'5A'},{name:'上海野生动物园',grade:'5A'},{name:'上海科技馆',grade:'5A'},{name:'豫园',grade:'4A'},{name:'外滩',grade:'4A'},{name:'上海迪士尼',grade:'5A'}],
   chengdu: [{name:'都江堰',grade:'5A'},{name:'青城山',grade:'5A'},{name:'大熊猫繁育基地',grade:'4A'},{name:'武侯祠',grade:'4A'},{name:'宽窄巷子',grade:'4A'},{name:'杜甫草堂',grade:'4A'}],
@@ -3385,15 +3428,17 @@ const DIMENSION_LABELS = {
 
 const DIMENSION_KEYS = Object.keys(DIMENSION_LABELS);
 
-// Interest interest matching matrix: maps interest tags to destination indices
-const INTEREST_TO_DEST = {
-  '自然风光': ['guilin','lijiang','zhangjiajie','sanya','harbin','lhasa','dunhuang'],
-  '历史文化': ['beijing','xian','dunhuang','lhasa','lijiang','chengdu','harbin'],
-  '美食体验': ['chengdu','beijing','xian','shanghai','xiamen','sanya'],
-  '户外探险': ['zhangjiajie','guilin','lhasa','dunhuang'],
-  '休闲度假': ['sanya','lijiang','xiamen','chengdu','guilin','shanghai'],
-  '城市探索': ['shanghai','beijing','xian','chengdu','xiamen','harbin']
-};
+// Interest matching matrix — built dynamically from all destinations
+const INTEREST_TO_DEST = (function() {
+  const map = {};
+  destinations.forEach(d => {
+    (d.interests || []).forEach(tag => {
+      if (!map[tag]) map[tag] = [];
+      map[tag].push(d.id);
+    });
+  });
+  return map;
+})();
 
 function normalize(value, min, max) {
   return Math.max(0, Math.min(1, (value - min) / (max - min)));
