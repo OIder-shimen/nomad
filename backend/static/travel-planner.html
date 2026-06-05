@@ -2364,7 +2364,8 @@ body::before {
 .chat-send-btn:hover { transform: scale(1.1); box-shadow: 0 4px 20px rgba(201, 164, 75, 0.4); }
 .chat-send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
 .chat-cards { margin-top: 14px; display: flex; flex-direction: column; gap: 10px; }
-.chat-card { background: var(--bg-surface); border-radius: var(--radius-md); border: 1px solid var(--border-subtle); padding: 14px; transition: border-color var(--duration-fast); }
+.chat-card { background: var(--bg-surface); border-radius: var(--radius-md); border: 1px solid var(--border-subtle); padding: 14px; transition: border-color var(--duration-fast); overflow: hidden; }
+.chat-card-photo { width: 100%; height: 100px; border-radius: 6px; margin-bottom: 10px; }
 .chat-card:hover { border-color: var(--gold); }
 .chat-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
 .chat-card-rank { font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; color: var(--gold); }
@@ -3187,14 +3188,45 @@ function loadDatasetImages() {
   if (typeof destinationPhotos === 'undefined') { console.warn('destinationPhotos not found'); return; }
   Object.entries(destinationPhotos).forEach(([destId, photos]) => {
     if (!photos || photos.length === 0) return;
-    const top = photos[0];
+    // Pick a random photo as primary, store all for cycling
+    const top = photos[Math.floor(Math.random() * photos.length)];
     imageCache[destId] = {
       url: top.url, thumb: top.url, fullUrl: top.fullUrl,
       author: top.author, authorUrl: top.authorUrl,
       desc: top.desc, blurHash: top.blurHash, allPhotos: photos
     };
   });
-  console.log(`Dataset images loaded: ${Object.keys(imageCache).length} destinations covered`);
+  console.log(`Dataset images loaded: ${Object.keys(imageCache).length} destinations, ${Object.values(destinationPhotos).reduce((s,p) => s + p.length, 0)} photos total`);
+}
+
+// Pick a random photo from the dataset for visual variety
+function getRandomPhoto(destId) {
+  const photos = destinationPhotos && destinationPhotos[destId];
+  if (!photos || photos.length === 0) return null;
+  const p = photos[Math.floor(Math.random() * photos.length)];
+  return {
+    url: p.url, thumb: p.url, fullUrl: p.fullUrl,
+    author: p.author, authorUrl: p.authorUrl,
+    desc: p.desc, blurHash: p.blurHash
+  };
+}
+
+// Cycle to next photo in the dataset
+function cyclePhoto(destId) {
+  const photos = destinationPhotos && destinationPhotos[destId];
+  if (!photos || photos.length <= 1) return;
+  const current = imageCache[destId];
+  const currentId = current ? current.id : '';
+  let idx = photos.findIndex(p => p.id === currentId);
+  idx = (idx + 1) % photos.length;
+  if (idx < 0) idx = 0;
+  const p = photos[idx];
+  imageCache[destId] = {
+    id: p.id, url: p.url, thumb: p.url, fullUrl: p.fullUrl,
+    author: p.author, authorUrl: p.authorUrl,
+    desc: p.desc, blurHash: p.blurHash, allPhotos: photos
+  };
+  return imageCache[destId];
 }
 
 // ---- Geoapify Attractions (via backend — API key server-side) ----
@@ -3550,7 +3582,11 @@ function buildMatchReasons(dest, profile, dims, holiday) {
       const c = document.createElement('div');
       c.className = 'chat-card';
       const highlight = card.confidence >= 85 ? '&#9733;' : '';
-      c.innerHTML = `<div class="chat-card-top">
+      const photo = getRandomPhoto(card.destId);
+      const photoHTML = photo
+        ? `<div class="chat-card-photo" style="background-image: url(${photo.thumb}); background-size: cover; background-position: center;"></div>`
+        : '';
+      c.innerHTML = `${photoHTML}<div class="chat-card-top">
         <span class="chat-card-rank">#${card.rank}</span>
         <span class="chat-card-city">${card.city} ${highlight}</span>
         <span class="chat-card-cost">¥${card.cost}/天</span>
@@ -4009,13 +4045,27 @@ loadDatasetImages();
     });
   });
 
-  // Simulate live viewer count updates
+  // Simulate live viewer count updates + cycle photos
   setInterval(() => {
-    container.querySelectorAll('.card-live-badge').forEach(badge => {
-      const currentViewers = parseInt(badge.textContent);
-      const change = rand(-10, 15);
-      const newViewers = Math.max(5, currentViewers + change);
-      badge.innerHTML = `<span class="live-dot"></span> ${newViewers} 人正在浏览`;
+    container.querySelectorAll('.destination-card').forEach(card => {
+      const destId = card.dataset.id;
+      const badge = card.querySelector('.card-live-badge');
+      if (badge) {
+        const currentViewers = parseInt(badge.textContent);
+        const change = rand(-10, 15);
+        const newViewers = Math.max(5, currentViewers + change);
+        badge.innerHTML = `<span class="live-dot"></span> ${newViewers} 人正在浏览`;
+      }
+      // Cycle photo every 5s for visual variety
+      const imgDiv = card.querySelector('.card-image');
+      const attrEl = card.querySelector('.unsplash-attr');
+      const newPhoto = cyclePhoto(destId);
+      if (imgDiv && newPhoto) {
+        imgDiv.style.backgroundImage = `url(${newPhoto.thumb})`;
+        imgDiv.style.backgroundSize = 'cover';
+        imgDiv.style.backgroundPosition = 'center';
+        if (attrEl) attrEl.textContent = `Photo: ${newPhoto.author} / Unsplash`;
+      }
     });
   }, 5000);
 })();
