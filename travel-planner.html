@@ -2488,10 +2488,11 @@ body::before {
       </div>
 
       <div class="chat-typing" id="chatTyping" style="display:none;">
-        <div class="typing-bubble">
+        <div class="typing-bubble" style="display:flex;align-items:center;gap:10px;">
           <span class="typing-dot"></span>
           <span class="typing-dot"></span>
           <span class="typing-dot"></span>
+          <span style="color:var(--text-secondary);font-size:0.85rem;margin-left:4px;">AI 正在思考，请稍等...</span>
         </div>
       </div>
 
@@ -3275,20 +3276,87 @@ async function loadAllImages(limit = 12) {
   }
 }
 
-// ---- Dataset Image Loader ----
+// ---- Dataset Image Loader (store raw URLs, preloading happens async) ----
 function loadDatasetImages() {
   if (typeof destinationPhotos === 'undefined') { console.warn('destinationPhotos not found'); return; }
   Object.entries(destinationPhotos).forEach(([destId, photos]) => {
     if (!photos || photos.length === 0) return;
-    // Pick a random photo as primary, store all for cycling
+    // Store direct URLs (not proxied) for fast preloading
     const top = photos[Math.floor(Math.random() * photos.length)];
     imageCache[destId] = {
-      url: proxyImageUrl(top.url), thumb: proxyImageUrl(top.url), fullUrl: proxyImageUrl(top.fullUrl),
+      url: top.url, thumb: top.url, fullUrl: top.fullUrl,
       author: top.author, authorUrl: top.authorUrl,
-      desc: top.desc, blurHash: top.blurHash, allPhotos: photos
+      desc: top.desc, blurHash: top.blurHash, allPhotos: photos,
+      _loaded: false // will be set true once preloaded
     };
   });
-  console.log(`Dataset images loaded: ${Object.keys(imageCache).length} destinations, ${Object.values(destinationPhotos).reduce((s,p) => s + p.length, 0)} photos total`);
+  console.log(`Dataset images loaded: ${Object.keys(imageCache).length} destinations`);
+}
+
+// Preload a city image asynchronously. On success, swap card backgrounds.
+function preloadCityImage(destId) {
+  const cached = imageCache[destId];
+  if (!cached || cached._loaded) return;
+  // Mark as loading to avoid duplicate preloads
+  cached._loading = true;
+
+  const img = new Image();
+  img.onload = function() {
+    cached._loaded = true;
+    cached._loading = false;
+    // Swap backgrounds on all cards for this city
+    document.querySelectorAll(`.trending-card[data-id="${destId}"] .card-image`).forEach(cardImg => {
+      cardImg.style.transition = 'background-image 0.6s var(--ease-out-expo)';
+      cardImg.style.backgroundImage = `url(${cached.thumb})`;
+      cardImg.style.backgroundSize = 'cover';
+      cardImg.style.backgroundPosition = 'center';
+      // Remove placeholder
+      const ph = cardImg.querySelector('.card-image-placeholder');
+      if (ph) ph.style.display = 'none';
+      // Show attribution
+      let attr = cardImg.querySelector('.unsplash-attr');
+      if (!attr) {
+        attr = document.createElement('span');
+        attr.className = 'unsplash-attr';
+        cardImg.appendChild(attr);
+      }
+      attr.textContent = `Photo: ${cached.author} / Unsplash`;
+    });
+  };
+  img.onerror = function() {
+    // Direct URL blocked (GFW), try proxy
+    cached._loading = false;
+    if (_backendOnline !== false) {
+      const proxyUrl = API_BASE + '/proxy/image?url=' + encodeURIComponent(cached.url);
+      const proxyImg = new Image();
+      proxyImg.onload = function() {
+        cached._loaded = true;
+        cached.thumb = proxyUrl;
+        document.querySelectorAll(`.trending-card[data-id="${destId}"] .card-image`).forEach(cardImg => {
+          cardImg.style.transition = 'background-image 0.6s var(--ease-out-expo)';
+          cardImg.style.backgroundImage = `url(${proxyUrl})`;
+          cardImg.style.backgroundSize = 'cover';
+          cardImg.style.backgroundPosition = 'center';
+          const ph = cardImg.querySelector('.card-image-placeholder');
+          if (ph) ph.style.display = 'none';
+        });
+      };
+      proxyImg.onerror = function() {
+        cached._loaded = true; // mark done even on failure
+      };
+      proxyImg.src = proxyUrl;
+    } else {
+      cached._loaded = true; // mark done, keep gradient
+    }
+  };
+  img.src = cached.thumb;
+}
+
+// Preload images for all currently visible trending cards
+function preloadVisibleTrendingImages() {
+  document.querySelectorAll('.trending-card').forEach(card => {
+    preloadCityImage(card.dataset.id);
+  });
 }
 
 // Pick a random photo from the dataset for visual variety
@@ -3297,16 +3365,16 @@ function getRandomPhoto(destId) {
   if (!photos || photos.length === 0) return null;
   const p = photos[Math.floor(Math.random() * photos.length)];
   return {
-    url: proxyImageUrl(p.url), thumb: proxyImageUrl(p.url), fullUrl: proxyImageUrl(p.fullUrl),
+    url: p.url, thumb: p.url, fullUrl: p.fullUrl,
     author: p.author, authorUrl: p.authorUrl,
     desc: p.desc, blurHash: p.blurHash
   };
 }
 
-// Cycle to next photo in the dataset
+// Cycle to next photo in the dataset (stores direct URLs, preloading handles proxy fallback)
 function cyclePhoto(destId) {
   const photos = destinationPhotos && destinationPhotos[destId];
-  if (!photos || photos.length <= 1) return;
+  if (!photos || photos.length <= 1) return null;
   const current = imageCache[destId];
   const currentId = current ? current.id : '';
   let idx = photos.findIndex(p => p.id === currentId);
@@ -3314,7 +3382,7 @@ function cyclePhoto(destId) {
   if (idx < 0) idx = 0;
   const p = photos[idx];
   imageCache[destId] = {
-    id: p.id, url: proxyImageUrl(p.url), thumb: proxyImageUrl(p.url), fullUrl: proxyImageUrl(p.fullUrl),
+    id: p.id, url: p.url, thumb: p.url, fullUrl: p.fullUrl,
     author: p.author, authorUrl: p.authorUrl,
     desc: p.desc, blurHash: p.blurHash, allPhotos: photos
   };
@@ -3461,11 +3529,24 @@ async function initAPIData() {
 
   // 3. Update UI with live data
   refreshTrendingImages();
+  refreshTrendingWeather();
   if (itinerary.length > 0) {
     updateItinerary();
     renderSearchResults(getFilteredDestinations());
     loadAttractionsForItinerary().then(() => renderAttractions());
   }
+}
+
+// Refresh weather text on trending cards after data loads
+function refreshTrendingWeather() {
+  const cards = document.querySelectorAll('.trending-card');
+  cards.forEach(card => {
+    const destId = card.dataset.id;
+    const w = weatherCache[destId];
+    if (!w) return;
+    const tempEl = card.querySelector('.card-meta-value');
+    if (tempEl) tempEl.innerHTML = `${w.data.icon} ${w.data.temp}&deg;C`;
+  });
 }
 
 // ---- 5A/4A SCENIC SPOT DATABASE (static open data) ----
@@ -4155,20 +4236,13 @@ loadDatasetImages();
 
   function buildCardHTML(d, i) {
     const initials = d.city.charAt(0);
-    const cachedImg = imageCache[d.id];
-    const imgStyle = cachedImg
-      ? `background-image: url(${cachedImg.thumb}); background-size: cover; background-position: center;`
-      : `background: ${cityGradientStyle(d.id)};`;
-    const attrText = cachedImg
-      ? `<span class="unsplash-attr">Photo: ${escapeHTML(cachedImg.author)} / Unsplash</span>`
-      : '';
     const wData = weatherCache[d.id] ? weatherCache[d.id].data : d.weather;
+    // Always start with gradient; photos load async via preloadCityImage
     return `
       <div class="destination-card trending-card" data-id="${d.id}" style="animation: fade-in-up 0.5s var(--ease-out-expo) ${i * 0.1}s both;">
-        <div class="card-image" style="${imgStyle}">
-          ${cachedImg ? '' : `<div class="card-image-placeholder" style="background: transparent;">${initials}</div>`}
+        <div class="card-image" style="background: ${cityGradientStyle(d.id)};">
+          <div class="card-image-placeholder" style="background: transparent;">${initials}</div>
           <div class="card-image-overlay"></div>
-          ${attrText}
           <div class="card-live-badge">
             <span class="live-dot"></span>
             ${cityViewerCount(d)} 人正在浏览
@@ -4207,6 +4281,9 @@ loadDatasetImages();
     });
   }
   bindCardClicks();
+
+  // Start async image preloading (gradients shown instantly, photos fade in)
+  preloadVisibleTrendingImages();
 
   // Immediately pre-cache the NEXT batch so rotation is smooth
   let nextCities = pickRandom3();
@@ -4264,6 +4341,9 @@ loadDatasetImages();
     nextCities = pickRandom3();
     precacheCities(nextCities);
 
+    // Start async image preloading for the new cards
+    preloadVisibleTrendingImages();
+
     rotating = false;
     if (refreshBtn) { refreshBtn.disabled = false; refreshBtn.textContent = '↻ 换一批'; }
   }
@@ -4294,15 +4374,13 @@ loadDatasetImages();
       // Cycle photo every 30s (every 6th tick at 5s intervals)
       if (photoCycleCounter % 6 === 0) {
         const destId = card.dataset.id;
-        const imgDiv = card.querySelector('.card-image');
-        const attrEl = card.querySelector('.unsplash-attr');
         const newPhoto = cyclePhoto(destId);
-        if (imgDiv && newPhoto) {
-          imgDiv.style.transition = 'background-image 0.6s var(--ease-out-expo)';
-          imgDiv.style.backgroundImage = `url(${newPhoto.thumb})`;
-          imgDiv.style.backgroundSize = 'cover';
-          imgDiv.style.backgroundPosition = 'center';
-          if (attrEl) attrEl.textContent = `Photo: ${newPhoto.author} / Unsplash`;
+        if (newPhoto) {
+          // Reset cache and preload the new photo
+          const cached = imageCache[destId];
+          cached._loaded = false;
+          cached._loading = false;
+          preloadCityImage(destId);
         }
       }
     });
@@ -4314,28 +4392,9 @@ loadDatasetImages();
   window._trendingRotate = rotateCards;
 })();
 
-// Refresh trending card images after Unsplash loads
+// Refresh trending card images — trigger async preloading
 function refreshTrendingImages() {
-  const cards = document.querySelectorAll('.trending-card');
-  cards.forEach(card => {
-    const destId = card.dataset.id;
-    const cachedImg = imageCache[destId];
-    if (!cachedImg) return;
-    const imgDiv = card.querySelector('.card-image');
-    if (!imgDiv) return;
-    imgDiv.style.backgroundImage = `url(${cachedImg.thumb})`;
-    imgDiv.style.backgroundSize = 'cover';
-    imgDiv.style.backgroundPosition = 'center';
-    const placeholder = imgDiv.querySelector('.card-image-placeholder');
-    if (placeholder) placeholder.remove();
-    let attr = imgDiv.querySelector('.unsplash-attr');
-    if (!attr) {
-      attr = document.createElement('span');
-      attr.className = 'unsplash-attr';
-      imgDiv.appendChild(attr);
-    }
-    attr.textContent = `Photo: ${cachedImg.author} / Unsplash`;
-  });
+  preloadVisibleTrendingImages();
 }
 
 // ---- SEARCH ----
