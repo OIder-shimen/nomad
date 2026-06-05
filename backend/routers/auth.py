@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import settings
@@ -14,6 +14,8 @@ from schemas.schemas import (
     UserCreate, UserLogin, UserOut, TokenOut,
     SavedItineraryCreate, SavedItineraryOut,
 )
+
+MAX_USERS = 20
 
 router = APIRouter()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -50,7 +52,11 @@ async def get_admin_user(current_user: User = Depends(get_current_user)) -> User
 
 @router.post("/register")
 async def register(data: UserCreate, db: AsyncSession = Depends(get_db)):
-    """Public registration endpoint."""
+    """Public registration endpoint — capped at MAX_USERS."""
+    total = (await db.execute(select(func.count(User.id)))).scalar() or 0
+    if total >= MAX_USERS:
+        raise HTTPException(status_code=403, detail=f"注册名额已满（限制{MAX_USERS}人），无法注册新用户")
+
     existing = await db.execute(select(User).where(User.username == data.username))
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="用户名已存在")
@@ -67,6 +73,13 @@ async def register(data: UserCreate, db: AsyncSession = Depends(get_db)):
     await db.refresh(user)
     token = create_token(user.id, user.username)
     return TokenOut(access_token=token, user=UserOut.model_validate(user))
+
+
+@router.get("/slots")
+async def registration_slots(db: AsyncSession = Depends(get_db)):
+    """Returns remaining registration slots."""
+    total = (await db.execute(select(func.count(User.id)))).scalar() or 0
+    return {"total": MAX_USERS, "used": total, "remaining": max(0, MAX_USERS - total)}
 
 
 @router.post("/login", response_model=TokenOut)

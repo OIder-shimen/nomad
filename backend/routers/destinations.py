@@ -9,12 +9,13 @@ from sqlalchemy.orm import selectinload
 
 from database import get_db
 from models.models import Destination, ScenicSpot, Holiday
+from routers.auth import get_current_user
 from schemas.schemas import (
     DestinationOut, DestinationBrief, DestinationCreate, ScenicSpotCreate, ScenicSpotOut,
     HolidayOut, HolidayCreate, RecommendRequest,
 )
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 def _to_destination_out(dest: Destination, spots: list[ScenicSpot]) -> DestinationOut:

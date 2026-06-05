@@ -4,13 +4,14 @@ Frontend calls /api/proxy/* instead of directly hitting external APIs.
 """
 import time
 import httpx
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from urllib.parse import urlparse
 
 from config import settings
+from routers.auth import get_current_user
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 # Simple in-memory image cache (URL → (content, content_type, expiry))
 _image_cache: dict[str, tuple[bytes, str, float]] = {}
