@@ -2636,9 +2636,9 @@ body::before {
       <div class="section-eyebrow">实时热门</div>
       <h2 class="section-title">当下最受欢迎的中国目的地</h2>
     </div>
-    <div class="nav-live-indicator" style="padding: 8px 16px;">
-      <span class="live-dot"></span>
-      每 30 秒刷新
+    <div class="nav-live-indicator" style="padding: 8px 16px; display: flex; align-items: center; gap: 12px;">
+      <span style="display: flex; align-items: center; gap: 6px;"><span class="live-dot"></span> 每 3 分钟刷新城市</span>
+      <button id="trendingRefreshBtn" title="立即刷新" style="background: var(--bg-glass); border: 1px solid var(--border-medium); color: var(--text-primary); border-radius: var(--radius-sm); padding: 4px 10px; cursor: pointer; font-size: 0.85rem; transition: all var(--duration-fast);">↻ 换一批</button>
     </div>
   </div>
 
@@ -4082,6 +4082,7 @@ loadDatasetImages();
 
 (function renderTrending() {
   const container = $('#trendingScroll');
+  const refreshBtn = $('#trendingRefreshBtn');
 
   // Build the top-50 pool (by popularity)
   const sorted = [...destinations].sort((a, b) => b.popularity - a.popularity);
@@ -4091,15 +4092,30 @@ loadDatasetImages();
   let recentIds = [];
 
   function pickRandom3() {
-    // Try to pick 3 cities not in the most recent 12 shown
     const available = pool.filter(d => !recentIds.includes(d.id));
     const source = available.length >= 3 ? available : pool;
-    // Shuffle and pick 3
     const shuffled = [...source].sort(() => Math.random() - 0.5);
     const chosen = shuffled.slice(0, 3);
-    // Update history
     recentIds = [...recentIds, ...chosen.map(d => d.id)].slice(-12);
     return chosen;
+  }
+
+  // Pre-cache images for a set of cities (load into imageCache before they're shown)
+  async function precacheCities(cities) {
+    const toLoad = cities.filter(d => !imageCache[d.id]);
+    if (toLoad.length === 0) return;
+    // Load in parallel, max 3 at a time with fast timeout
+    for (let i = 0; i < toLoad.length; i += 3) {
+      const batch = toLoad.slice(i, i + 3);
+      await Promise.allSettled(
+        batch.map(async (d) => {
+          try {
+            const data = await fetchDestinationImage(d.id);
+            if (data) imageCache[d.id] = data;
+          } catch (e) { /* silent */ }
+        })
+      );
+    }
   }
 
   function buildCardHTML(d, i) {
@@ -4158,10 +4174,21 @@ loadDatasetImages();
   }
   bindCardClicks();
 
-  // Rotate cards every 30 seconds with staggered slide animation
+  // Immediately pre-cache the NEXT batch so rotation is smooth
+  let nextCities = pickRandom3();
+  precacheCities(nextCities);
+
+  // Rotate cards with staggered slide animation
+  let rotating = false;
   async function rotateCards() {
+    if (rotating) return;
+    rotating = true;
+
+    // Disable refresh button during animation
+    if (refreshBtn) { refreshBtn.disabled = true; refreshBtn.textContent = '⋯ 刷新中'; }
+
     const cards = container.querySelectorAll('.trending-card');
-    const newCities = pickRandom3();
+    const newCities = nextCities;
 
     // Phase 1: slide old cards out (staggered)
     for (let i = 0; i < cards.length; i++) {
@@ -4171,13 +4198,12 @@ loadDatasetImages();
       await new Promise(r => setTimeout(r, 80));
     }
 
-    // Wait for the last card's exit animation to finish
     await new Promise(r => setTimeout(r, 400));
 
-    // Phase 2: replace content with new cities
+    // Phase 2: replace content with pre-cached cities
     container.innerHTML = newCities.map((d, i) => {
       const html = buildCardHTML(d, i);
-      return html.replace('fade-in-up 0.5s', 'fade-in-up 0s'); // override initial animation
+      return html.replace('fade-in-up 0.5s', 'fade-in-up 0s');
     }).join('');
     bindCardClicks();
 
@@ -4191,7 +4217,6 @@ loadDatasetImages();
       newCards[i].style.opacity = '0';
     }
 
-    // Force reflow
     void container.offsetHeight;
 
     for (let i = 0; i < newCards.length; i++) {
@@ -4200,14 +4225,31 @@ loadDatasetImages();
       newCards[i].style.opacity = '1';
       await new Promise(r => setTimeout(r, 80));
     }
+
+    // Pre-cache the next batch right away
+    nextCities = pickRandom3();
+    precacheCities(nextCities);
+
+    rotating = false;
+    if (refreshBtn) { refreshBtn.disabled = false; refreshBtn.textContent = '↻ 换一批'; }
   }
 
-  // Rotate every 30 seconds
-  const rotationInterval = setInterval(rotateCards, 30000);
+  // Rotate every 3 minutes (180s)
+  const rotationInterval = setInterval(rotateCards, 180000);
 
-  // Live viewer count update every 5s + cycle photos
+  // Manual refresh button
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', () => {
+      rotateCards();
+    });
+  }
+
+  // Live viewer count update every 5s + cycle photos every 30s
+  let photoCycleCounter = 0;
   setInterval(() => {
+    photoCycleCounter++;
     container.querySelectorAll('.trending-card').forEach(card => {
+      // Update viewer count every tick
       const badge = card.querySelector('.card-live-badge');
       if (badge) {
         const currentViewers = parseInt(badge.textContent);
@@ -4215,23 +4257,27 @@ loadDatasetImages();
         const newViewers = Math.max(5, currentViewers + change);
         badge.innerHTML = `<span class="live-dot"></span> ${newViewers} 人正在浏览`;
       }
-      // Cycle photo
-      const destId = card.dataset.id;
-      const imgDiv = card.querySelector('.card-image');
-      const attrEl = card.querySelector('.unsplash-attr');
-      const newPhoto = cyclePhoto(destId);
-      if (imgDiv && newPhoto) {
-        imgDiv.style.backgroundImage = `url(${newPhoto.thumb})`;
-        imgDiv.style.backgroundSize = 'cover';
-        imgDiv.style.backgroundPosition = 'center';
-        if (attrEl) attrEl.textContent = `Photo: ${newPhoto.author} / Unsplash`;
+      // Cycle photo every 30s (every 6th tick at 5s intervals)
+      if (photoCycleCounter % 6 === 0) {
+        const destId = card.dataset.id;
+        const imgDiv = card.querySelector('.card-image');
+        const attrEl = card.querySelector('.unsplash-attr');
+        const newPhoto = cyclePhoto(destId);
+        if (imgDiv && newPhoto) {
+          imgDiv.style.transition = 'background-image 0.6s var(--ease-out-expo)';
+          imgDiv.style.backgroundImage = `url(${newPhoto.thumb})`;
+          imgDiv.style.backgroundSize = 'cover';
+          imgDiv.style.backgroundPosition = 'center';
+          if (attrEl) attrEl.textContent = `Photo: ${newPhoto.author} / Unsplash`;
+        }
       }
     });
   }, 5000);
 
-  // Expose for image refresh callback
+  // Expose for external use
   window._trendingContainer = container;
   window._trendingCities = () => currentCities;
+  window._trendingRotate = rotateCards;
 })();
 
 // Refresh trending card images after Unsplash loads
