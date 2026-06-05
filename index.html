@@ -648,6 +648,10 @@ body::before {
   background: linear-gradient(to top, rgba(8,12,20,0.9) 0%, transparent 60%);
 }
 
+.trending-card {
+  will-change: transform, opacity;
+}
+
 .card-live-badge {
   position: absolute;
   top: 14px;
@@ -3099,13 +3103,29 @@ async function fetchWeatherFromAPI(lat, lng) {
 }
 
 async function loadAllWeather() {
-  const promises = destinations.map(async (d) => {
+  const BATCH_SIZE = 8;
+  const BATCH_DELAY = 200; // ms between batches
+  const CACHE_TTL = 30 * 60 * 1000; // 30 min
+
+  // Collect cities that need refresh
+  const stale = destinations.filter(d => {
     const cached = weatherCache[d.id];
-    if (cached && (Date.now() - cached.timestamp < 15 * 60 * 1000)) return;
-    const data = await fetchWeatherFromAPI(d.lat, d.lng);
-    if (data) weatherCache[d.id] = { data, timestamp: Date.now() };
+    return !cached || (Date.now() - cached.timestamp >= CACHE_TTL);
   });
-  await Promise.allSettled(promises);
+
+  // Fetch in batches to avoid overwhelming the backend
+  for (let i = 0; i < stale.length; i += BATCH_SIZE) {
+    const batch = stale.slice(i, i + BATCH_SIZE);
+    const results = await Promise.allSettled(
+      batch.map(async (d) => {
+        const data = await fetchWeatherFromAPI(d.lat, d.lng);
+        if (data) weatherCache[d.id] = { data, timestamp: Date.now() };
+      })
+    );
+    if (i + BATCH_SIZE < stale.length) {
+      await new Promise(r => setTimeout(r, BATCH_DELAY));
+    }
+  }
 }
 
 // ---- Air Quality (via backend → Open-Meteo) ----
@@ -4031,12 +4051,28 @@ loadDatasetImages();
 
 (function renderTrending() {
   const container = $('#trendingScroll');
-  const sorted = [...destinations].sort((a, b) => b.popularity - a.popularity);
-  const top6 = sorted.slice(0, 6);
 
-  const cardHTML = top6.map((d, i) => {
+  // Build the top-50 pool (by popularity)
+  const sorted = [...destinations].sort((a, b) => b.popularity - a.popularity);
+  const pool = sorted.slice(0, 50);
+
+  // Track currently displayed city IDs to avoid repeats
+  let recentIds = [];
+
+  function pickRandom3() {
+    // Try to pick 3 cities not in the most recent 12 shown
+    const available = pool.filter(d => !recentIds.includes(d.id));
+    const source = available.length >= 3 ? available : pool;
+    // Shuffle and pick 3
+    const shuffled = [...source].sort(() => Math.random() - 0.5);
+    const chosen = shuffled.slice(0, 3);
+    // Update history
+    recentIds = [...recentIds, ...chosen.map(d => d.id)].slice(-12);
+    return chosen;
+  }
+
+  function buildCardHTML(d, i) {
     const viewers = rand(20, 200);
-    const imgClass = `card-image-${d.id}`;
     const initials = d.city.charAt(0);
     const cachedImg = imageCache[d.id];
     const imgStyle = cachedImg
@@ -4045,9 +4081,10 @@ loadDatasetImages();
     const attrText = cachedImg
       ? `<span class="unsplash-attr">Photo: ${escapeHTML(cachedImg.author)} / Unsplash</span>`
       : '';
+    const wData = weatherCache[d.id] ? weatherCache[d.id].data : d.weather;
     return `
-      <div class="destination-card" data-id="${d.id}" style="animation: fade-in-up 0.6s var(--ease-out-expo) ${i * 0.1}s both;">
-        <div class="card-image ${cachedImg ? '' : imgClass}" style="${imgStyle}">
+      <div class="destination-card trending-card" data-id="${d.id}" style="animation: fade-in-up 0.5s var(--ease-out-expo) ${i * 0.1}s both;">
+        <div class="card-image" style="${imgStyle}">
           ${cachedImg ? '' : `<div class="card-image-placeholder">${initials}</div>`}
           <div class="card-image-overlay"></div>
           ${attrText}
@@ -4058,12 +4095,12 @@ loadDatasetImages();
         </div>
         <div class="card-body">
           <div class="card-location">
-            <span class="card-country">${d.country}</span>
+            <span class="card-country">${d.country} · ${d.region}</span>
           </div>
           <span class="card-city">${d.city}</span>
           <div class="card-meta">
             <div class="card-meta-item">
-              <span class="card-meta-value">${d.weather.icon} ${d.weather.temp}&deg;C</span>
+              <span class="card-meta-value">${wData.icon} ${wData.temp}&deg;C</span>
               <span class="card-meta-label">当前天气</span>
             </div>
             <div class="card-meta-item">
@@ -4078,22 +4115,68 @@ loadDatasetImages();
         </div>
       </div>
     `;
-  }).join('');
+  }
 
-  container.innerHTML = cardHTML;
+  let currentCities = pickRandom3();
+  container.innerHTML = currentCities.map((d, i) => buildCardHTML(d, i)).join('');
 
-  // Click to add to itinerary
-  container.querySelectorAll('.destination-card').forEach(card => {
-    card.addEventListener('click', () => {
-      const id = card.dataset.id;
-      addToItinerary(id);
+  function bindCardClicks() {
+    container.querySelectorAll('.trending-card').forEach(card => {
+      card.addEventListener('click', () => addToItinerary(card.dataset.id));
     });
-  });
+  }
+  bindCardClicks();
 
-  // Simulate live viewer count updates + cycle photos
+  // Rotate cards every 30 seconds with staggered slide animation
+  async function rotateCards() {
+    const cards = container.querySelectorAll('.trending-card');
+    const newCities = pickRandom3();
+
+    // Phase 1: slide old cards out (staggered)
+    for (let i = 0; i < cards.length; i++) {
+      cards[i].style.transition = 'transform 0.45s var(--ease-out-expo), opacity 0.35s ease';
+      cards[i].style.transform = 'translateX(-50px)';
+      cards[i].style.opacity = '0';
+      await new Promise(r => setTimeout(r, 80));
+    }
+
+    // Wait for the last card's exit animation to finish
+    await new Promise(r => setTimeout(r, 400));
+
+    // Phase 2: replace content with new cities
+    container.innerHTML = newCities.map((d, i) => {
+      const html = buildCardHTML(d, i);
+      return html.replace('fade-in-up 0.5s', 'fade-in-up 0s'); // override initial animation
+    }).join('');
+    bindCardClicks();
+
+    currentCities = newCities;
+
+    // Phase 3: animate new cards in from the right (staggered)
+    const newCards = container.querySelectorAll('.trending-card');
+    for (let i = 0; i < newCards.length; i++) {
+      newCards[i].style.transition = 'none';
+      newCards[i].style.transform = 'translateX(50px)';
+      newCards[i].style.opacity = '0';
+    }
+
+    // Force reflow
+    void container.offsetHeight;
+
+    for (let i = 0; i < newCards.length; i++) {
+      newCards[i].style.transition = 'transform 0.5s var(--ease-out-expo), opacity 0.4s ease';
+      newCards[i].style.transform = 'translateX(0)';
+      newCards[i].style.opacity = '1';
+      await new Promise(r => setTimeout(r, 80));
+    }
+  }
+
+  // Rotate every 30 seconds
+  const rotationInterval = setInterval(rotateCards, 30000);
+
+  // Live viewer count update every 5s + cycle photos
   setInterval(() => {
-    container.querySelectorAll('.destination-card').forEach(card => {
-      const destId = card.dataset.id;
+    container.querySelectorAll('.trending-card').forEach(card => {
       const badge = card.querySelector('.card-live-badge');
       if (badge) {
         const currentViewers = parseInt(badge.textContent);
@@ -4101,7 +4184,8 @@ loadDatasetImages();
         const newViewers = Math.max(5, currentViewers + change);
         badge.innerHTML = `<span class="live-dot"></span> ${newViewers} 人正在浏览`;
       }
-      // Cycle photo every 5s for visual variety
+      // Cycle photo
+      const destId = card.dataset.id;
       const imgDiv = card.querySelector('.card-image');
       const attrEl = card.querySelector('.unsplash-attr');
       const newPhoto = cyclePhoto(destId);
@@ -4113,30 +4197,33 @@ loadDatasetImages();
       }
     });
   }, 5000);
+
+  // Expose for image refresh callback
+  window._trendingContainer = container;
+  window._trendingCities = () => currentCities;
 })();
 
 // Refresh trending card images after Unsplash loads
 function refreshTrendingImages() {
-  const cards = document.querySelectorAll('.destination-card');
+  const cards = document.querySelectorAll('.trending-card');
   cards.forEach(card => {
     const destId = card.dataset.id;
     const cachedImg = imageCache[destId];
     if (!cachedImg) return;
     const imgDiv = card.querySelector('.card-image');
     if (!imgDiv) return;
-    // Remove placeholder classes and set background image
-    imgDiv.className = 'card-image';
     imgDiv.style.backgroundImage = `url(${cachedImg.thumb})`;
     imgDiv.style.backgroundSize = 'cover';
     imgDiv.style.backgroundPosition = 'center';
-    // Remove placeholder text
     const placeholder = imgDiv.querySelector('.card-image-placeholder');
     if (placeholder) placeholder.remove();
-    // Add attribution
-    const attr = document.createElement('span');
-    attr.className = 'unsplash-attr';
+    let attr = imgDiv.querySelector('.unsplash-attr');
+    if (!attr) {
+      attr = document.createElement('span');
+      attr.className = 'unsplash-attr';
+      imgDiv.appendChild(attr);
+    }
     attr.textContent = `Photo: ${cachedImg.author} / Unsplash`;
-    imgDiv.appendChild(attr);
   });
 }
 
@@ -4693,12 +4780,12 @@ $('#saveItinerary').addEventListener('click', () => {
 });
 
 // ---- API-BACKED DATA REFRESH ----
-// Refresh weather & AQI every 15 minutes, exchange rates every 6 hours
+// Refresh weather & AQI every 30 minutes, exchange rates every 6 hours
 setInterval(async () => {
   await Promise.all([loadAllWeather(), loadAllAirQuality()]);
   updateItinerary();
   renderSearchResults(getFilteredDestinations());
-}, 15 * 60 * 1000);
+}, 30 * 60 * 1000);
 
 setInterval(async () => {
   await fetchExchangeRates();
