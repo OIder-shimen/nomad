@@ -4439,32 +4439,22 @@ loadDatasetImages();
     });
   }
 
-  // Live viewer count update every 5s + cycle photos every 30s
+  // Photo cycle every 30s
   let photoCycleCounter = 0;
   setInterval(() => {
     photoCycleCounter++;
-    container.querySelectorAll('.trending-card').forEach(card => {
-      // Update viewer count every tick
-      const badge = card.querySelector('.card-live-badge');
-      if (badge) {
-        const currentViewers = parseInt(badge.textContent);
-        const change = rand(-10, 15);
-        const newViewers = Math.max(5, currentViewers + change);
-        badge.innerHTML = `<span class="live-dot"></span> ${newViewers} 人正在浏览`;
-      }
-      // Cycle photo every 30s (every 6th tick at 5s intervals)
-      if (photoCycleCounter % 6 === 0) {
+    if (photoCycleCounter % 6 === 0) {
+      container.querySelectorAll('.trending-card').forEach(card => {
         const destId = card.dataset.id;
         const newPhoto = cyclePhoto(destId);
         if (newPhoto) {
-          // Reset cache and preload the new photo
           const cached = imageCache[destId];
           cached._loaded = false;
           cached._loading = false;
           preloadCityImage(destId);
         }
-      }
-    });
+      });
+    }
   }, 5000);
 
   // Expose for external use
