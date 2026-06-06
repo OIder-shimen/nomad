@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="Nomad — AI 驱动的中国旅游智能推荐平台。基于深度神经网络的个性化推荐引擎，融合气候、预算、交通、客流等多维度数据，为你发现最匹配的中国目的地。">
-<title>Nomad — AI 中国旅游智能推荐</title>
+<meta name="description" content="TD — AI 驱动的中国旅游智能推荐平台。基于深度神经网络的个性化推荐引擎，融合气候、预算、交通、客流等多维度数据，为你发现最匹配的中国目的地。">
+<title>TD — AI 中国旅游智能推荐</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500&family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
@@ -2389,8 +2389,8 @@ body::before {
 <!-- Navigation -->
 <nav class="nav" id="nav">
   <a href="#" class="nav-logo">
-    <span class="nav-logo-icon">N</span>
-    NOMAD
+    <span class="nav-logo-icon">T</span>
+    TD
   </a>
   <ul class="nav-links">
     <li><a href="#discover" class="active">发现</a></li>
@@ -2414,7 +2414,7 @@ body::before {
 <div class="mobile-nav-drawer" id="mobileNavDrawer">
   <div class="mobile-nav-header">
     <span class="nav-logo" style="font-family:var(--font-display);font-size:1.25rem;font-weight:700;color:var(--text-primary);">
-      <span class="nav-logo-icon" style="width:32px;height:32px;font-size:0.875rem;">N</span> NOMAD
+      <span class="nav-logo-icon" style="width:32px;height:32px;font-size:0.875rem;">N</span> TD
     </span>
     <button class="mobile-nav-close" id="mobileNavClose">&times;</button>
   </div>
@@ -2465,7 +2465,7 @@ body::before {
       探索最美中国<br>让 <em>AI 为你精准规划</em>
     </h1>
     <p class="hero-subtitle">
-      与 Nomad AI 旅行助手直接对话。告诉我你的预算、兴趣和偏好，让 AI 为你智能分析、
+      与 TD AI 旅行助手直接对话。告诉我你的预算、兴趣和偏好，让 AI 为你智能分析、
       精准匹配最合适的中国目的地，并提供专业的旅行规划建议。
     </p>
 
@@ -2475,15 +2475,10 @@ body::before {
         <div class="chat-welcome" id="chatWelcome">
           <div class="chat-welcome-avatar">&#10022;</div>
           <div class="chat-welcome-text">
-            <p>你好！我是 <strong>Nomad AI 旅行助手</strong>。</p>
+            <p>你好！我是 <strong>TD AI 旅行助手</strong>。</p>
             <p>告诉我你的旅行偏好，我来为你精准推荐最合适的中国目的地。</p>
           </div>
-          <div class="chat-suggestions">
-            <button class="chat-suggestion-chip" data-text="推荐适合自然风光的城市">&#9968; 推荐适合自然风光的城市</button>
-            <button class="chat-suggestion-chip" data-text="预算 2000 元/天，喜欢美食和历史文化">&#127860; 预算 2000/天，喜欢美食和历史文化</button>
-            <button class="chat-suggestion-chip" data-text="冬天去哪里暖和又休闲？">&#9728; 冬天去哪里暖和又休闲？</button>
-            <button class="chat-suggestion-chip" data-text="带娃出行，推荐亲子友好城市">&#128106; 带娃出行，推荐亲子友好城市</button>
-          </div>
+          <div class="chat-suggestions" id="chatSuggestions"></div>
         </div>
       </div>
 
@@ -2777,8 +2772,8 @@ body::before {
 <!-- Footer -->
 <footer class="footer">
   <div>
-    <span class="footer-brand">NOMAD</span>
-    <p class="footer-copy" style="margin-top: 4px;">&copy; 2026 Nomad Travel. 让每一次出发都值得铭记。</p>
+    <span class="footer-brand">TD</span>
+    <p class="footer-copy" style="margin-top: 4px;">&copy; 2026 TD Travel. 让每一次出发都值得铭记。</p>
   </div>
   <ul class="footer-links">
     <li><a href="#">关于我们</a></li>
@@ -2854,7 +2849,7 @@ body::before {
 <script src="all-destinations.js"></script>
 <script>
 /* ============================================================
-   NOMAD — Real-Time Travel Planner
+   TD — Real-Time Travel Planner
    ============================================================ */
 
 // ---- DATA ----
@@ -3080,7 +3075,8 @@ function escapeHTML(str) {
 }
 
 function getWeatherHTML(d) {
-  const w = weatherCache[d.id] ? weatherCache[d.id].data : d.weather;
+  const w = weatherCache[d.id] && weatherCache[d.id].data;
+  if (!w) return '⏳';
   return `${w.icon} ${w.temp}°C ${w.condition}`;
 }
 
@@ -3144,16 +3140,27 @@ async function loadAllWeather() {
     return !cached || (Date.now() - cached.timestamp >= CACHE_TTL);
   });
 
-  // Fetch in batches to avoid overwhelming the backend
-  for (let i = 0; i < stale.length; i += BATCH_SIZE) {
-    const batch = stale.slice(i, i + BATCH_SIZE);
-    const results = await Promise.allSettled(
+  // Prioritize currently visible trending cities first
+  const visibleIds = new Set();
+  document.querySelectorAll('.trending-card').forEach(card => {
+    if (card.dataset.id) visibleIds.add(card.dataset.id);
+  });
+  const priority = stale.filter(d => visibleIds.has(d.id));
+  const rest = stale.filter(d => !visibleIds.has(d.id));
+  const sorted = [...priority, ...rest];
+
+  // Fetch in batches to avoid overwhelming the API
+  for (let i = 0; i < sorted.length; i += BATCH_SIZE) {
+    const batch = sorted.slice(i, i + BATCH_SIZE);
+    await Promise.allSettled(
       batch.map(async (d) => {
         const data = await fetchWeatherFromAPI(d.lat, d.lng);
         if (data) weatherCache[d.id] = { data, timestamp: Date.now() };
       })
     );
-    if (i + BATCH_SIZE < stale.length) {
+    // Update visible cards after each batch so weather appears progressively
+    refreshTrendingWeather();
+    if (i + BATCH_SIZE < sorted.length) {
       await new Promise(r => setTimeout(r, BATCH_DELAY));
     }
   }
@@ -3552,8 +3559,8 @@ function refreshTrendingWeather() {
   cards.forEach(card => {
     const destId = card.dataset.id;
     const w = weatherCache[destId];
-    if (!w) return;
-    const tempEl = card.querySelector('.card-meta-value');
+    if (!w || !w.data) return;
+    const tempEl = card.querySelector('.card-meta-weather');
     if (tempEl) tempEl.innerHTML = `${w.data.icon} ${w.data.temp}&deg;C`;
   });
 }
@@ -3842,7 +3849,7 @@ function buildMatchReasons(dest, profile, dims, holiday) {
         `- ${d.city}(${d.region}, id:${d.id}): 日均¥${d.cost}, 兴趣[${d.interests.join(',')}], 气候${d.climateScore}/100, 交通${d.trafficScore}/100, 拥挤${d.crowdLevel}/100, 景点数${d.scenicSpots}, 小众度${d.nicheScore}/100`
       ).join('\n');
 
-      const systemPrompt = `你是 Nomad AI 旅行规划助手，专门帮助用户在中国境内寻找最佳旅游目的地。你必须通过对话理解用户的偏好（预算、兴趣、季节、风格等），然后从下方目的地数据库中匹配最合适的目的地。
+      const systemPrompt = `你是 TD AI 旅行规划助手，专门帮助用户在中国境内寻找最佳旅游目的地。你必须通过对话理解用户的偏好（预算、兴趣、季节、风格等），然后从下方目的地数据库中匹配最合适的目的地。
 
 ## 目的地数据库
 ${destSummary}
@@ -3931,13 +3938,54 @@ confidence 是 0-100 的匹配度评分，rank 从 1 开始递增，matchReasons
     chatInput.style.height = Math.min(chatInput.scrollHeight, 100) + 'px';
   });
 
-  // Suggestion chips
-  document.querySelectorAll('.chat-suggestion-chip').forEach(chip => {
-    chip.addEventListener('click', () => {
-      if (chatWelcome) chatWelcome.style.display = 'none';
-      sendMessage(chip.dataset.text);
+  // —— Dynamic AI suggestion chips ——
+  const SUGGESTION_POOL = [
+    { icon: '&#9968;', text: '推荐适合自然风光的城市' },
+    { icon: '&#127860;', text: '预算2000/天，喜欢美食和历史文化' },
+    { icon: '&#9728;', text: '冬天去哪里暖和又休闲？' },
+    { icon: '&#128106;', text: '带娃出行，推荐亲子友好城市' },
+    { icon: '&#127748;', text: '推荐人少小众的古镇目的地' },
+    { icon: '&#128247;', text: '适合拍照打卡的网红城市' },
+    { icon: '&#128652;', text: '三天短途旅行去哪里好？' },
+    { icon: '&#128150;', text: '推荐适合蜜月旅行的浪漫城市' },
+    { icon: '&#127754;', text: '夏天去哪里避暑又好玩？' },
+    { icon: '&#9968;', text: '喜欢徒步登山，推荐户外目的地' },
+    { icon: '&#128176;', text: '预算500/天，性价比高的城市' },
+    { icon: '&#128694;', text: '推荐适合独自旅行的城市' },
+    { icon: '&#127886;', text: '喜欢少数民族文化和民俗体验' },
+    { icon: '&#9832;', text: '推荐有温泉的休闲度假城市' },
+    { icon: '&#127800;', text: '春天看花去哪里最美？' },
+    { icon: '&#127867;', text: '推荐有特色夜市和美食街的城市' },
+    { icon: '&#127965;', text: '适合退休长辈的慢节奏目的地' },
+    { icon: '&#127809;', text: '想看红叶，秋天去哪里？' },
+    { icon: '&#127938;', text: '推荐冬季滑雪温泉的组合' },
+    { icon: '&#127958;', text: '想去有海的城市放松几天' },
+  ];
+
+  function shuffleArray(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  function renderSuggestionChips() {
+    const container = document.getElementById('chatSuggestions');
+    if (!container) return;
+    const picked = shuffleArray([...SUGGESTION_POOL]).slice(0, 4);
+    container.innerHTML = picked.map(p =>
+      `<button class="chat-suggestion-chip" data-text="${p.text}">${p.icon} ${p.text}</button>`
+    ).join('');
+    container.querySelectorAll('.chat-suggestion-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        if (chatWelcome) chatWelcome.style.display = 'none';
+        sendMessage(chip.dataset.text);
+      });
     });
-  });
+  }
+
+  renderSuggestionChips();
 })();
 
 // ---- RECOMMENDATION RENDERING ----
@@ -4245,7 +4293,11 @@ loadDatasetImages();
 
   function buildCardHTML(d, i) {
     const initials = d.city.charAt(0);
-    const wData = weatherCache[d.id] ? weatherCache[d.id].data : d.weather;
+    const weatherLoaded = weatherCache[d.id] && weatherCache[d.id].data;
+    const wData = weatherLoaded ? weatherCache[d.id].data : null;
+    const weatherHTML = weatherLoaded
+      ? `${wData.icon} ${wData.temp}&deg;C`
+      : '<span style="font-size:0.75rem;color:var(--text-muted);">加载中...</span>';
     // Always start with gradient; photos load async via preloadCityImage
     return `
       <div class="destination-card trending-card" data-id="${d.id}" style="animation: fade-in-up 0.5s var(--ease-out-expo) ${i * 0.1}s both;">
@@ -4264,7 +4316,7 @@ loadDatasetImages();
           <span class="card-city">${d.city}</span>
           <div class="card-meta">
             <div class="card-meta-item">
-              <span class="card-meta-value">${wData.icon} ${wData.temp}&deg;C</span>
+              <span class="card-meta-value card-meta-weather">${weatherHTML}</span>
               <span class="card-meta-label">当前天气</span>
             </div>
             <div class="card-meta-item">
@@ -4530,7 +4582,7 @@ function renderSearchResults(results) {
           <span class="search-result-country">${d.region} · ${d.timezone}</span>
         </div>
         <div class="search-result-meta">
-          <span>${(weatherCache[d.id] && weatherCache[d.id].data) ? weatherCache[d.id].data.icon : d.weather.icon} ${(weatherCache[d.id] && weatherCache[d.id].data) ? weatherCache[d.id].data.temp : d.weather.temp}&deg;C</span>
+          <span class="card-meta-weather">${(weatherCache[d.id] && weatherCache[d.id].data) ? `${weatherCache[d.id].data.icon} ${weatherCache[d.id].data.temp}&deg;C` : '<span style="font-size:0.75rem;color:var(--text-muted);">加载中...</span>'}</span>
           <span>≈${fmtMoney(d.cost)}/天</span>
         </div>
         <button class="btn-add ${isAdded ? 'added' : ''}" data-id="${d.id}">
@@ -4651,8 +4703,7 @@ function updateItinerary() {
           <span class="itinerary-stop-dates">${dateFmt(arrivalDate)} - ${dateFmt(departDate)} · <span class="stay-days-control"><button data-action="stayDec" data-index="${i}" class="stay-btn">−</button><span class="stay-days-num">${stayDays}</span>天<button data-action="stayInc" data-index="${i}" class="stay-btn">+</button></span></span>
         </div>
         <div class="itinerary-stop-weather">
-          <span class="weather-icon">${(weatherCache[d.id] && weatherCache[d.id].data) ? weatherCache[d.id].data.icon : d.weather.icon}</span>
-          ${(weatherCache[d.id] && weatherCache[d.id].data) ? weatherCache[d.id].data.temp : d.weather.temp}&deg;C
+          ${(weatherCache[d.id] && weatherCache[d.id].data) ? `<span class="weather-icon">${weatherCache[d.id].data.icon}</span> ${weatherCache[d.id].data.temp}&deg;C` : '<span style="font-size:0.75rem;color:var(--text-muted);">⏳</span>'}
         </div>
         <div class="itinerary-stop-actions">
           ${i > 0 ? `<button title="上移" data-action="up" data-index="${i}">↑</button>` : '<button style="visibility:hidden;">↑</button>'}
@@ -5072,7 +5123,7 @@ $('#heroSearchBtn').addEventListener('click', () => {
   });
 })();
 
-console.log('%c NOMAD %c AI 中国旅游推荐已就绪 ',
+console.log('%c TD %c AI 中国旅游推荐已就绪 ',
   'background: #c9a44b; color: #0d1220; padding: 4px 8px; font-weight: 700; font-size: 14px; border-radius: 4px 0 0 4px;',
   'background: #141b2d; color: #e8e5df; padding: 4px 8px; font-size: 14px; border-radius: 0 4px 4px 0;'
 );

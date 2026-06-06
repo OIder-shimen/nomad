@@ -63,7 +63,7 @@ async def proxy_osm_transport(lat: float = Query(...), lng: float = Query(...)):
             headers={
                 "Content-Type": "text/plain",
                 "Accept": "application/json",
-                "User-Agent": "NomadTravelPlanner/1.0",
+                "User-Agent": "TDTravelPlanner/1.0",
             },
         )
         if resp.status_code != 200:

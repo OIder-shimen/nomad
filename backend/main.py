@@ -25,8 +25,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Nomad Travel Planner API",
-    description="Backend for Nomad AI travel planner — API proxy, user auth, destination management",
+    title="TD Travel Planner API",
+    description="Backend for TD AI travel planner — API proxy, user auth, destination management",
     version="1.0.0",
     lifespan=lifespan,
 )
