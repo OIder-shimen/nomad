@@ -3055,9 +3055,13 @@ function cityGradientStyle(destId) {
 }
 
 function cityViewerCount(d) {
-  // Derive viewer count from real popularity data (1-99 scale → viewers)
-  const base = Math.round((d.popularity || 50) * 1.8);
-  return base + rand(-8, 8);
+  // Show year-to-date tourist visits with current month label
+  const ytd = d.ytdVisitors || d.annualVisitors || 0;
+  const month = new Date().getMonth() + 1;
+  if (ytd >= 10000) {
+    return `${month}月止游客 ${(ytd / 10000).toFixed(1)} 亿人次`;
+  }
+  return `${month}月止游客 ${ytd} 万人次`;
 }
 function $(sel) { return document.querySelector(sel); }
 function $$(sel) { return document.querySelectorAll(sel); }
@@ -3246,26 +3250,42 @@ function proxyImageUrl(url) {
   return url;
 }
 
+// Track used Unsplash image URLs to prevent duplicates across cities
+const _usedImageUrls = new Set();
+
 async function fetchDestinationImage(destId) {
   const dest = destinations.find(d => d.id === destId);
   if (!dest) return null;
-  // Skip API call if backend is known down
   if (_backendOnline === false) return null;
-  try {
-    const query = encodeURIComponent(`${dest.city} ${dest.country} landmark travel`);
-    const resp = await apiFetch(`/proxy/unsplash-photo?query=${query}`);
-    if (!resp.ok) return null;
-    const json = await resp.json();
-    if (json.results && json.results.length > 0) {
-      const img = json.results[0];
-      return {
-        url: proxyImageUrl(img.urls.regular), thumb: proxyImageUrl(img.urls.thumb),
-        author: img.user.name,
-        authorUrl: img.user.links.html + '?utm_source=nomad&utm_medium=referral'
-      };
-    }
-    return null;
-  } catch (e) { console.warn('Unsplash fetch failed for', destId, ':', e.message); return null; }
+
+  // Try multiple query variations for more variety
+  const queries = [
+    `${dest.city} ${dest.country} travel landmark`,
+    `${dest.city} cityscape architecture`,
+    `${dest.city} famous scenery`,
+  ];
+
+  for (const query of queries) {
+    try {
+      const resp = await apiFetch(`/proxy/unsplash-photo?query=${encodeURIComponent(query)}`);
+      if (!resp.ok) continue;
+      const json = await resp.json();
+      if (!json.results || json.results.length === 0) continue;
+
+      // Pick first non-duplicate image
+      for (const img of json.results) {
+        const url = img.urls.regular;
+        if (_usedImageUrls.has(url)) continue;
+        _usedImageUrls.add(url);
+        return {
+          url: proxyImageUrl(url), thumb: proxyImageUrl(img.urls.thumb),
+          author: img.user.name,
+          authorUrl: img.user.links.html + '?utm_source=td&utm_medium=referral'
+        };
+      }
+    } catch (e) { /* try next query */ }
+  }
+  return null;
 }
 
 async function loadAllImages(limit = 12) {
@@ -4306,7 +4326,7 @@ loadDatasetImages();
           <div class="card-image-overlay"></div>
           <div class="card-live-badge">
             <span class="live-dot"></span>
-            ${cityViewerCount(d)} 人正在浏览
+            ${cityViewerCount(d)}
           </div>
         </div>
         <div class="card-body">
