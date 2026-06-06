@@ -2971,7 +2971,7 @@ function getHolidayImpact() {
   }
   return { isHoliday: false, name: '', crowdBoost: 0 };
 }
-const ratesCache = {};      // { data, timestamp }
+
 const imageCache = {};      // keyed by dest.id: { url, author, authorUrl }
 const attractionsCache = {};// keyed by dest.id: { data, timestamp }
 
@@ -3204,22 +3204,6 @@ async function loadAllAirQuality() {
 }
 
 // ---- Exchange Rates (via backend → Frankfurter) ----
-async function fetchExchangeRates() {
-  if (ratesCache.data && (Date.now() - ratesCache.timestamp < 24 * 60 * 60 * 1000)) return;
-  try {
-    const resp = await apiFetch('/proxy/exchange-rates');
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const json = await resp.json();
-    ratesCache.data = json.rates;
-    ratesCache.timestamp = Date.now();
-  } catch (e) { console.warn('Exchange rate fetch failed:', e.message); }
-}
-
-function getRateForCurrency(currency) {
-  if (!ratesCache.data) return null;
-  return ratesCache.data[currency] || null;
-}
-
 // ---- Unsplash Images (via backend — API key server-side) ----
 
 // Route Unsplash CDN URLs through backend proxy to bypass GFW blocking
@@ -3559,7 +3543,7 @@ async function initAPIData() {
     loadAllAirQuality(),
     loadAllOSMData(),
     loadAMapData(),
-    fetchExchangeRates(),
+
     loadAllImages()
   ]);
 
@@ -5047,7 +5031,7 @@ setInterval(async () => {
 }, 30 * 60 * 1000);
 
 setInterval(async () => {
-  await fetchExchangeRates();
+
 }, 6 * 60 * 60 * 1000);
 
 // ---- INIT STATE ----
