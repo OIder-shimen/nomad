@@ -2367,9 +2367,10 @@ body::before {
 .chat-send-btn { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--gold), var(--copper)); border: none; color: var(--text-inverse); cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all var(--duration-fast); }
 .chat-send-btn:hover { transform: scale(1.1); box-shadow: 0 4px 20px rgba(201, 164, 75, 0.4); }
 .chat-send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
-.chat-cards { margin-top: 14px; display: flex; flex-direction: column; gap: 10px; }
-.chat-card { background: var(--bg-surface); border-radius: var(--radius-md); border: 1px solid var(--border-subtle); padding: 14px; transition: border-color var(--duration-fast); overflow: hidden; }
-.chat-card-photo { width: 100%; height: 100px; border-radius: 6px; margin-bottom: 10px; }
+.chat-cards { margin-top: 14px; display: flex; flex-direction: column; gap: 12px; }
+.chat-card { background: var(--bg-surface); border-radius: var(--radius-md); border: 1px solid var(--border-subtle); padding: 0; transition: border-color var(--duration-fast); overflow: hidden; }
+.chat-card-photo { width: 100%; height: 140px; background-size: cover; background-position: center; display: block; }
+.chat-card-body { padding: 12px 14px 14px; }
 .chat-card:hover { border-color: var(--gold); }
 .chat-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
 .chat-card-rank { font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; color: var(--gold); }
@@ -2776,10 +2777,10 @@ body::before {
     <p class="footer-copy" style="margin-top: 4px;">&copy; 2026 TD Travel. 让每一次出发都值得铭记。</p>
   </div>
   <ul class="footer-links">
-    <li><a href="#">关于我们</a></li>
-    <li><a href="#">隐私政策</a></li>
-    <li><a href="#">使用条款</a></li>
-    <li><a href="#">联系我们</a></li>
+    <li><a href="about.html">关于我们</a></li>
+    <li><a href="privacy.html">隐私政策</a></li>
+    <li><a href="terms.html">使用条款</a></li>
+    <li><a href="contact.html">联系我们</a></li>
   </ul>
 </footer>
 
@@ -2844,7 +2845,7 @@ body::before {
 </div>
 
 <!-- Unsplash Dataset: pre-curated destination photos -->
-<script src="destinations-photos.js"></script>
+
 <!-- All 371 Chinese cities data (generated from backend/all_cities.json) -->
 <script src="all-destinations.js"></script>
 <script>
@@ -3119,7 +3120,10 @@ function weatherConditionForCode(code) {
 async function fetchWeatherFromAPI(lat, lng) {
   try {
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true`;
-    const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    const resp = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const json = await resp.json();
     const cw = json.current_weather;
@@ -3178,14 +3182,35 @@ function aqiLevelInfo(aqi) {
   return             { level: '差', color: '#c97a5b', bg: 'rgba(201,122,91,0.12)', emoji: '🔴' };
 }
 
+// ---- Dynamic Heat Index Calculator ----
+// Computes real-time heat score from multiple dimensions
+function computeHeatIndex(d) {
+  const popScore = (d.popularity || 50) * 0.4;
+  const crowdScore = (d.crowdLevel || 50) * 0.3;
+  const climateScore = (d.climateScore || 50) * 0.2;
+  const interestScore = (100 - (d.nicheScore || 50)) * 0.1;
+  let score = Math.round(popScore + crowdScore + climateScore + interestScore);
+  if (d.weather) {
+    const cond = d.weather.condition || '';
+    if (cond.includes('晴') || cond.includes('☀')) score = Math.round(score * 1.08);
+    else if (cond.includes('雨') || cond.includes('雪') || cond.includes('雾')) score = Math.round(score * 0.85);
+    else if (cond.includes('多云') || cond.includes('阴')) score = Math.round(score * 0.95);
+  }
+  return Math.min(99, Math.max(1, score));
+}
+
 async function fetchAirQuality(lat, lng) {
   try {
-    const resp = await apiFetch(`/proxy/air-quality?lat=${lat}&lng=${lng}`);
+    const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lng}&current=us_aqi,pm2_5,pm10`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    const resp = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const json = await resp.json();
     const c = json.current;
     return {
-      aqi: Math.round(c.european_aqi || 0),
+      aqi: Math.round(c.us_aqi || 0),
       pm25: c.pm2_5 != null ? Math.round(c.pm2_5) : null,
       pm10: c.pm10 != null ? Math.round(c.pm10) : null,
       time: c.time
@@ -3225,13 +3250,8 @@ async function checkBackendHealth() {
 checkBackendHealth();
 
 function proxyImageUrl(url) {
-  if (!url) return '';
-  if (url.includes('images.unsplash.com') || url.includes('plus.unsplash.com')) {
-    // If backend is known to be down, try direct (may fail under GFW but won't hang on proxy)
-    if (_backendOnline === false) return url;
-    return API_BASE + '/proxy/image?url=' + encodeURIComponent(url);
-  }
-  return url;
+  // Return URLs directly - no backend proxy needed
+  return url || '';
 }
 
 // Track used Unsplash image URLs to prevent duplicates across cities
@@ -3240,34 +3260,21 @@ const _usedImageUrls = new Set();
 async function fetchDestinationImage(destId) {
   const dest = destinations.find(d => d.id === destId);
   if (!dest) return null;
-  if (_backendOnline === false) return null;
 
-  // Try multiple query variations for more variety
-  const queries = [
-    `${dest.city} ${dest.country} travel landmark`,
-    `${dest.city} cityscape architecture`,
-    `${dest.city} famous scenery`,
-  ];
-
-  for (const query of queries) {
-    try {
-      const resp = await apiFetch(`/proxy/unsplash-photo?query=${encodeURIComponent(query)}`);
-      if (!resp.ok) continue;
-      const json = await resp.json();
-      if (!json.results || json.results.length === 0) continue;
-
-      // Pick first non-duplicate image
-      for (const img of json.results) {
-        const url = img.urls.regular;
-        if (_usedImageUrls.has(url)) continue;
-        _usedImageUrls.add(url);
-        return {
-          url: proxyImageUrl(url), thumb: proxyImageUrl(img.urls.thumb),
-          author: img.user.name,
-          authorUrl: img.user.links.html + '?utm_source=td&utm_medium=referral'
-        };
-      }
-    } catch (e) { /* try next query */ }
+  // Use deterministic image URLs from free sources - no backend required
+  const cityHash = dest.city.split('').reduce((a,c) => a + c.charCodeAt(0), 0);
+  const imageIds = [cityHash % 1000, (cityHash * 7 + 13) % 1000, (cityHash * 13 + 7) % 1000];
+  
+  for (const imgId of imageIds) {
+    const url = `https://picsum.photos/seed/${dest.id}_${imgId}/800/600`;
+    const thumbUrl = `https://picsum.photos/seed/${dest.id}_${imgId}/400/300`;
+    if (_usedImageUrls.has(url)) continue;
+    _usedImageUrls.add(url);
+    return {
+      url: url, thumb: thumbUrl,
+      author: 'Picsum Photos',
+      authorUrl: 'https://picsum.photos'
+    };
   }
   return null;
 }
@@ -3533,28 +3540,136 @@ async function loadAMapData() {
 }
 
 // ---- Unified initializer ----
-async function initAPIData() {
-  // 1. Load dataset images instantly (no API call)
-  loadDatasetImages();
 
-  // 2. Fetch live API data via backend proxy
-  await Promise.all([
-    loadAllWeather(),
-    loadAllAirQuality(),
-    loadAllOSMData(),
-    loadAMapData(),
+// ---- CSS Fallback Image Generator ----
+// Generates deterministic gradient images without any external API
+function generateFallbackImages() {
+  const gradients = [
+    'linear-gradient(135deg,#667eea 0%,#764ba2 100%)',
+    'linear-gradient(135deg,#f093fb 0%,#f5576c 100%)',
+    'linear-gradient(135deg,#4facfe 0%,#00f2fe 100%)',
+    'linear-gradient(135deg,#43e97b 0%,#38f9d7 100%)',
+    'linear-gradient(135deg,#fa709a 0%,#fee140 100%)',
+    'linear-gradient(135deg,#30cfd0 0%,#330867 100%)',
+    'linear-gradient(135deg,#a8edea 0%,#fed6e3 100%)',
+    'linear-gradient(135deg,#ff9a9e 0%,#fecfef 99%,#fecfef 100%)',
+    'linear-gradient(135deg,#ffecd2 0%,#fcb69f 100%)',
+    'linear-gradient(135deg,#ff8a80 0%,#ea6100 100%)',
+    'linear-gradient(135deg,#8e9eab 0%,#eef2f3 100%)',
+    'linear-gradient(135deg,#1e3c72 0%,#2a5298 100%)',
+    'linear-gradient(135deg,#f6d365 0%,#fda085 100%)',
+    'linear-gradient(135deg,#84fab0 0%,#8fd3f4 100%)',
+    'linear-gradient(135deg,#a1c4fd 0%,#c2e9fb 100%)',
+    'linear-gradient(135deg,#fbc2eb 0%,#a6c1ee 100%)',
+    'linear-gradient(135deg,#fdcbf1 0%,#e6dee9 100%)',
+    'linear-gradient(135deg,#a18cd1 0%,#fbc2eb 100%)',
+    'linear-gradient(135deg,#fad0c4 0%,#ffd1ff 100%)',
+    'linear-gradient(135deg,#89f7fe 0%,#66a6ff 100%)',
+  ];
+  // Pick trending cities (already filtered and sorted)
+  const trending = getFilteredDestinations().slice(0, 20);
+  trending.forEach((dest, i) => {
+    const grad = gradients[i % gradients.length];
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect width="400" height="300" fill="url(#g)"/><defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:${grad.match(/#[0-9a-f]{6}/i)?.[0] || '#667eea'}"/><stop offset="100%" style="stop-color:${grad.match(/[0-9a-f]{6}/i)?.[1] || '#764ba2'}"/></linearGradient></defs><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="48" fill="rgba(255,255,255,0.25)">${dest.city[0]}</text></svg>`;
+    const dataUrl = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
+    imageCache[dest.id] = dataUrl;
+  });
+  // Refresh UI with fallback images
+  document.querySelectorAll('.trending-card').forEach(card => {
+    const destId = card.dataset.id;
+    if (!destId || !imageCache[destId]) return;
+    const img = card.querySelector('.card-bg');
+    if (img) img.style.backgroundImage = `url(${imageCache[destId]})`;
+  });
+}
 
-    loadAllImages()
-  ]);
-
-  // 3. Update UI with live data
-  refreshTrendingImages();
-  refreshTrendingWeather();
-  if (itinerary.length > 0) {
-    updateItinerary();
-    renderSearchResults(getFilteredDestinations());
-    loadAttractionsForItinerary().then(() => renderAttractions());
+// ---- Weather for visible cards only ----
+async function loadWeatherForVisibleCards() {
+  const trending = getFilteredDestinations().slice(0, 8);
+  const BATCH_SIZE = 4;
+  for (let i = 0; i < trending.length; i += BATCH_SIZE) {
+    const batch = trending.slice(i, i + BATCH_SIZE);
+    await Promise.allSettled(
+      batch.map(async (d) => {
+        try {
+          const data = await fetchWeatherFromAPI(d.lat, d.lng);
+          if (data) {
+            weatherCache[d.id] = { data, timestamp: Date.now() };
+            d.weather = data; // attach to destination for heat index
+          }
+        } catch (e) { /* silent fail */ }
+      })
+    );
+    refreshTrendingWeather();
+    if (i + BATCH_SIZE < trending.length) {
+      await new Promise(r => setTimeout(r, 300));
+    }
   }
+}
+
+// ---- AQI for visible cards only ----
+async function loadAQIForVisibleCards() {
+  const trending = getFilteredDestinations().slice(0, 8);
+  const BATCH_SIZE = 4;
+  for (let i = 0; i < trending.length; i += BATCH_SIZE) {
+    const batch = trending.slice(i, i + BATCH_SIZE);
+    await Promise.allSettled(
+      batch.map(async (d) => {
+        try {
+          const data = await fetchAirQuality(d.lat, d.lng);
+          if (data) aqiCache[d.id] = data;
+        } catch (e) { /* silent fail */ }
+      })
+    );
+    refreshTrendingAQI();
+    if (i + BATCH_SIZE < trending.length) {
+      await new Promise(r => setTimeout(r, 300));
+    }
+  }
+}
+
+// ---- Trending images async loader ----
+async function loadTrendingImagesAsync() {
+  const trending = getFilteredDestinations().slice(0, 12);
+  for (const dest of trending) {
+    try {
+      const result = await fetchDestinationImage(dest.id);
+      if (result && result.url) {
+        // Store in correct object format for preloadCityImage
+        imageCache[dest.id] = {
+          url: result.url,
+          thumb: result.thumb || result.url,
+          author: result.author || 'Picsum Photos',
+          authorUrl: result.authorUrl || 'https://picsum.photos',
+          _loaded: false
+        };
+        // Trigger preload which will update card backgrounds on success
+        preloadCityImage(dest.id);
+      }
+    } catch (e) { /* silent fail, keep fallback */ }
+    // Small delay to not overwhelm network
+    await new Promise(r => setTimeout(r, 100));
+  }
+}
+
+async function initAPIData() {
+  // 1. Load images - use fallback if dataset not available
+  loadDatasetImages();
+  // If no dataset images, generate CSS fallback images for trending cards
+  if (Object.keys(imageCache).length === 0) {
+    generateFallbackImages();
+  }
+
+  // 2. Fetch live API data - FIRE AND FORGET, never block UI
+  // Only load weather for visible trending cards (first 8), not all 371 cities
+  loadWeatherForVisibleCards();
+  // Air quality - also only for visible cards
+  loadAQIForVisibleCards();
+  // Images for trending cards - async, non-blocking
+  loadTrendingImagesAsync();
+
+  // 3. UI is already rendered with static data from init()
+  // Async data will update UI as it arrives
 }
 
 // Refresh weather text on trending cards after data loads
@@ -3562,10 +3677,17 @@ function refreshTrendingWeather() {
   const cards = document.querySelectorAll('.trending-card');
   cards.forEach(card => {
     const destId = card.dataset.id;
-    const w = weatherCache[destId];
-    if (!w || !w.data) return;
+    const d = destinations.find(x => x.id === destId);
+    if (!d) return;
     const tempEl = card.querySelector('.card-meta-weather');
-    if (tempEl) tempEl.innerHTML = `${w.data.icon} ${w.data.temp}&deg;C`;
+    if (!tempEl) return;
+    // Use live weather cache if available, else use built-in static weather
+    const w = weatherCache[destId];
+    if (w && w.data) {
+      tempEl.innerHTML = `${w.data.icon} ${w.data.temp}&deg;C ${w.data.condition}`;
+    } else if (d.weather) {
+      tempEl.innerHTML = `${d.weather.icon} ${d.weather.temp}&deg;C ${d.weather.condition}`;
+    }
   });
 }
 
@@ -3794,36 +3916,52 @@ function buildMatchReasons(dest, profile, dims, holiday) {
     return div;
   }
 
-  function appendCards(bubble, cards) {
+  async function appendCards(bubble, cards) {
     if (!cards || cards.length === 0) return;
     const wrap = document.createElement('div');
     wrap.className = 'chat-cards';
-    cards.forEach(card => {
+    for (let idx = 0; idx < cards.length; idx++) {
+      const card = cards[idx];
+      if (!card || !card.destId) continue;
       const c = document.createElement('div');
       c.className = 'chat-card';
-      const highlight = card.confidence >= 85 ? '&#9733;' : '';
-      const photo = getRandomPhoto(card.destId);
-      const photoHTML = photo
-        ? `<div class="chat-card-photo" style="background-image: url(${photo.thumb}); background-size: cover; background-position: center;"></div>`
+      const conf = card.confidence || 0;
+      const highlight = conf >= 85 ? '&#9733;' : '';
+
+      // Fetch image via picsum.photos (same as trending cards)
+      let photoUrl = '';
+      try {
+        const imgData = await fetchDestinationImage(card.destId);
+        if (imgData && imgData.thumb) photoUrl = imgData.thumb;
+      } catch (e) { /* ignore */ }
+
+      const photoHTML = photoUrl
+        ? `<div class="chat-card-photo" style="background-image: url('${photoUrl}');"></div>`
         : '';
-      c.innerHTML = `${photoHTML}<div class="chat-card-top">
-        <span class="chat-card-rank">#${card.rank}</span>
-        <span class="chat-card-city">${card.city} ${highlight}</span>
-        <span class="chat-card-cost">¥${card.cost}/天</span>
-        <span class="chat-card-confidence">${card.confidence}% 匹配</span>
+      const reasons = Array.isArray(card.matchReasons) ? card.matchReasons : [];
+      c.innerHTML = `${photoHTML}<div class="chat-card-body"><div class="chat-card-top">
+        <span class="chat-card-rank">#${card.rank || (idx + 1)}</span>
+        <span class="chat-card-city">${escapeHTML(card.city || '未知')} ${highlight}</span>
+        <span class="chat-card-cost">¥${card.cost || 0}/天</span>
+        <span class="chat-card-confidence">${conf}% 匹配</span>
       </div>
-      ${card.matchReasons && card.matchReasons.length > 0 ? '<div class="chat-card-reasons">' + card.matchReasons.map(r => '<span class="chat-card-reason">' + r + '</span>').join('') + '</div>' : ''}
+      ${reasons.length > 0 ? '<div class="chat-card-reasons">' + reasons.map(r => '<span class="chat-card-reason">' + escapeHTML(r) + '</span>').join('') + '</div>' : ''}
       <div class="chat-card-action">
-        <button class="chat-card-add-btn" data-dest-id="${card.destId}" data-dest-name="${card.city}" data-dest-cost="${card.cost}">+ 加入行程</button>
-      </div>`;
-      c.querySelector('.chat-card-add-btn').addEventListener('click', () => {
-        const dest = destinations.find(d => d.id === card.destId);
-        if (dest) addToItinerary(dest);
-      });
+        <button class="chat-card-add-btn" data-dest-id="${card.destId}" data-dest-name="${escapeHTML(card.city || '')}" data-dest-cost="${card.cost || 0}">+ 加入行程</button>
+      </div></div>`;
+      const addBtn = c.querySelector('.chat-card-add-btn');
+      if (addBtn) {
+        addBtn.addEventListener('click', () => {
+          const dest = destinations.find(d => d.id === card.destId);
+          if (dest) addToItinerary(dest.id);
+        });
+      }
       wrap.appendChild(c);
-    });
-    bubble.appendChild(wrap);
-    scrollToBottom();
+    }
+    if (wrap.children.length > 0) {
+      bubble.appendChild(wrap);
+      scrollToBottom();
+    }
   }
 
   function markdownToHtml(text) {
@@ -3905,6 +4043,10 @@ confidence 是 0-100 的匹配度评分，rank 从 1 开始递增，matchReasons
         try {
           const parsed = JSON.parse(jsonMatch[1]);
           cards = parsed.destinations || parsed;
+          // Ensure cards is always an array
+          if (cards && !Array.isArray(cards)) {
+            cards = [cards];
+          }
           displayText = replyText.replace(/```json[\s\S]*?```/, '').trim();
         } catch (e) {
           console.error('Failed to parse recommendation JSON:', e);
@@ -3915,13 +4057,22 @@ confidence 是 0-100 的匹配度评分，rank 从 1 开始递增，matchReasons
       const bubble = appendBubble('assistant', html, true);
 
       if (cards && cards.length > 0) {
-        appendCards(bubble, cards);
+        try {
+          await appendCards(bubble, cards);
+        } catch (cardErr) {
+          console.error('Failed to render recommendation cards:', cardErr);
+          // Don't show error bubble if text reply was already displayed
+        }
       }
     } catch (err) {
       hideTyping();
       chatSendBtn.disabled = false;
       console.error('Chat error:', err);
-      appendBubble('error', '抱歉，AI 服务暂时不可用，请稍后再试。', false);
+      // Only show error bubble if assistant reply wasn't already displayed
+      const hasAssistantReply = conversationMessages.some(m => m.role === 'assistant');
+      if (!hasAssistantReply) {
+        appendBubble('error', '抱歉，AI 服务暂时不可用，请稍后再试。', false);
+      }
     }
   }
 
@@ -4297,11 +4448,13 @@ loadDatasetImages();
 
   function buildCardHTML(d, i) {
     const initials = d.city.charAt(0);
-    const weatherLoaded = weatherCache[d.id] && weatherCache[d.id].data;
-    const wData = weatherLoaded ? weatherCache[d.id].data : null;
-    const weatherHTML = weatherLoaded
-      ? `${wData.icon} ${wData.temp}&deg;C`
-      : '<span style="font-size:0.75rem;color:var(--text-muted);">加载中...</span>';
+    // Use live weather cache if available, else use built-in static weather data
+    const liveW = weatherCache[d.id] && weatherCache[d.id].data;
+    const staticW = d.weather;
+    const wData = liveW || staticW;
+    const weatherHTML = wData
+      ? `${wData.icon} ${wData.temp}&deg;C ${wData.condition || ''}`
+      : '<span style="font-size:0.75rem;color:var(--text-muted);">--</span>';
     // Always start with gradient; photos load async via preloadCityImage
     return `
       <div class="destination-card trending-card" data-id="${d.id}" style="animation: fade-in-up 0.5s var(--ease-out-expo) ${i * 0.1}s both;">
@@ -4328,7 +4481,7 @@ loadDatasetImages();
               <span class="card-meta-label">时区</span>
             </div>
             <div class="card-meta-item">
-              <span class="card-meta-value">热力 ${d.popularity}</span>
+              <span class="card-meta-value">热力 ${computeHeatIndex(d)}</span>
               <span class="card-meta-label">热度指数</span>
             </div>
           </div>
@@ -4454,9 +4607,7 @@ function refreshTrendingImages() {
 
 // ---- SEARCH ----
 (function initSearch() {
-  const heroSearch = $('#heroSearch');
   const plannerSearch = $('#plannerSearch');
-  const heroBtn = $('#heroSearchBtn');
 
   function performSearch(query, fromHero = false) {
     if (!query.trim()) {
@@ -4482,6 +4633,8 @@ function refreshTrendingImages() {
   }
 
   async function fetchGeocodeResults(query, localResults) {
+    // Skip geocode search if backend is offline
+    if (_backendOnline === false) return;
     try {
       const resp = await apiFetch(`/proxy/geocode-search?q=${encodeURIComponent(query)}&limit=5`);
       if (!resp.ok) return;
@@ -4544,12 +4697,6 @@ function refreshTrendingImages() {
     $('#plannerSearch').value = name;
   }
 
-  heroSearch.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') performSearch(heroSearch.value, true);
-  });
-
-  heroBtn.addEventListener('click', () => performSearch(heroSearch.value, true));
-
   plannerSearch.addEventListener('input', () => performSearch(plannerSearch.value));
 
   // Initial results
@@ -4576,7 +4723,7 @@ function renderSearchResults(results) {
           <span class="search-result-country">${d.region} · ${d.timezone}</span>
         </div>
         <div class="search-result-meta">
-          <span class="card-meta-weather">${(weatherCache[d.id] && weatherCache[d.id].data) ? `${weatherCache[d.id].data.icon} ${weatherCache[d.id].data.temp}&deg;C` : '<span style="font-size:0.75rem;color:var(--text-muted);">加载中...</span>'}</span>
+          <span class="card-meta-weather">${(weatherCache[d.id] && weatherCache[d.id].data) ? `${weatherCache[d.id].data.icon} ${weatherCache[d.id].data.temp}&deg;C` : `🌡 ${d.avgTemp || 20}°C ${d.climate || '温和'}`}</span>
           <span>≈${fmtMoney(d.cost)}/天</span>
         </div>
         <button class="btn-add ${isAdded ? 'added' : ''}" data-id="${d.id}">
@@ -4604,13 +4751,23 @@ function renderSearchResults(results) {
 
 // ---- ITINERARY MANAGEMENT ----
 function addToItinerary(destId) {
+  if (typeof destId === 'object' && destId !== null) {
+    destId = destId.id || destId.destId;
+  }
+  if (!destId || typeof destId !== 'string') {
+    console.warn('addToItinerary: invalid destId', destId);
+    return;
+  }
   if (itinerary.some(s => s.id === destId)) {
     showToast('该目的地已在行程中');
     return;
   }
 
   const dest = destinations.find(d => d.id === destId);
-  if (!dest) return;
+  if (!dest) {
+    showToast('未找到该目的地');
+    return;
+  }
 
   const entry = { ...dest, stayDays: rand(2, 4) };
   itinerary.push(entry);
@@ -4618,7 +4775,7 @@ function addToItinerary(destId) {
   renderSearchResults(getFilteredDestinations());
   loadAttractionsForItinerary().then(() => renderAttractions());
   saveState();
-  showToast(`${dest.city}, ${dest.country} 已添加到行程`);
+  showToast(`${dest.city} 已添加到行程`);
 }
 
 function removeFromItinerary(index) {
@@ -4662,11 +4819,13 @@ function updateItinerary() {
   const empty = $('#itineraryEmpty');
   const summary = $('#itinerarySummary');
 
+  // Sync count first
   count.textContent = `${itinerary.length} 站`;
 
+  // Remove old stop elements without destroying the empty node
+  timeline.querySelectorAll('.itinerary-stop').forEach(el => el.remove());
+
   if (itinerary.length === 0) {
-    timeline.innerHTML = '';
-    timeline.appendChild(empty);
     empty.style.display = '';
     summary.style.display = 'none';
     return;
@@ -4678,7 +4837,8 @@ function updateItinerary() {
   const startDate = new Date(tripStartDate);
   let currentDate = new Date(startDate);
 
-  timeline.innerHTML = itinerary.map((d, i) => {
+  // Build stops HTML and append (preserves empty node reference)
+  const stopsHTML = itinerary.map((d, i) => {
     const stayDays = d.stayDays || 2;
     const arrivalDate = new Date(currentDate);
     currentDate.setDate(currentDate.getDate() + stayDays);
@@ -4697,7 +4857,7 @@ function updateItinerary() {
           <span class="itinerary-stop-dates">${dateFmt(arrivalDate)} - ${dateFmt(departDate)} · <span class="stay-days-control"><button data-action="stayDec" data-index="${i}" class="stay-btn">−</button><span class="stay-days-num">${stayDays}</span>天<button data-action="stayInc" data-index="${i}" class="stay-btn">+</button></span></span>
         </div>
         <div class="itinerary-stop-weather">
-          ${(weatherCache[d.id] && weatherCache[d.id].data) ? `<span class="weather-icon">${weatherCache[d.id].data.icon}</span> ${weatherCache[d.id].data.temp}&deg;C` : '<span style="font-size:0.75rem;color:var(--text-muted);">⏳</span>'}
+          ${(weatherCache[d.id] && weatherCache[d.id].data) ? `<span class="weather-icon">${weatherCache[d.id].data.icon}</span> ${weatherCache[d.id].data.temp}&deg;C` : '<span style="font-size:0.75rem;color:var(--text-muted);">--</span>'}
         </div>
         <div class="itinerary-stop-actions">
           ${i > 0 ? `<button title="上移" data-action="up" data-index="${i}">↑</button>` : '<button style="visibility:hidden;">↑</button>'}
@@ -4708,8 +4868,10 @@ function updateItinerary() {
     `;
   }).join('');
 
+  timeline.insertAdjacentHTML('beforeend', stopsHTML);
+
   // Action handlers
-  timeline.querySelectorAll('button').forEach(btn => {
+  timeline.querySelectorAll('.itinerary-stop button').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const action = btn.dataset.action;
@@ -4967,10 +5129,8 @@ function showToast(message) {
   updateAuthUI();
   loadSlots();
 
-  // If not logged in, force auth modal on page load
-  if (!currentUser) {
-    openSettings();
-  }
+  // Auth modal no longer auto-opens on page load
+  // (manual click on login button required)
 })();
 
 // ---- ATTRACTIONS RENDERING ----
@@ -5022,6 +5182,44 @@ $('#saveItinerary').addEventListener('click', () => {
   showToast('行程已保存到本地浏览器');
 });
 
+// ---- ONE-CLICK TRAVEL PLAN GENERATOR ----
+$('#generatePlanBtn').addEventListener('click', () => {
+  if (recentRecommendations.length === 0) {
+    showToast('请先通过AI对话获取推荐目的地');
+    document.querySelector('.ai-toggle')?.click();
+    return;
+  }
+  generateTravelPlan();
+});
+
+function generateTravelPlan() {
+  const sorted = [...recentRecommendations]
+    .sort((a, b) => (b.confidence || 0) - (a.confidence || 0));
+  const added = [];
+  const maxDestinations = Math.min(5, sorted.length);
+  for (let i = 0; i < maxDestinations && added.length < 5; i++) {
+    const rec = sorted[i];
+    const destId = rec.destId || rec.id;
+    if (!destId) continue;
+    if (itinerary.some(s => s.id === destId)) continue;
+    const dest = destinations.find(d => d.id === destId);
+    if (!dest) continue;
+    const entry = { ...dest, stayDays: rand(2, 4) };
+    itinerary.push(entry);
+    added.push(dest.city);
+  }
+  if (added.length === 0) {
+    showToast('推荐的地点已在行程中');
+    return;
+  }
+  updateItinerary();
+  renderSearchResults(getFilteredDestinations());
+  loadAttractionsForItinerary().then(() => renderAttractions());
+  saveState();
+  showToast(`已生成计划：${added.join(' \u2192 ')}`);
+  document.getElementById('planner')?.scrollIntoView({ behavior: 'smooth' });
+}
+
 // ---- API-BACKED DATA REFRESH ----
 // Refresh weather & AQI every 30 minutes, exchange rates every 6 hours
 setInterval(async () => {
@@ -5069,16 +5267,6 @@ document.querySelectorAll('.nav-links a').forEach(link => {
     document.querySelectorAll('.nav-links a').forEach(l => l.classList.remove('active'));
     link.classList.add('active');
   });
-});
-
-// ---- HERO SEARCH SCROLL ----
-$('#heroSearchBtn').addEventListener('click', () => {
-  const query = $('#heroSearch').value.trim();
-  if (query) {
-    setTimeout(() => {
-      $('#planner').scrollIntoView({ behavior: 'smooth' });
-    }, 200);
-  }
 });
 
 // ---- MOBILE NAV ----
