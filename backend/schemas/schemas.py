@@ -179,6 +179,24 @@ class RecommendRequest(BaseModel):
 
 
 # ── Admin Stats ──
+class PasswordChange(BaseModel):
+    old_password: str
+    new_password: str
+
+
+class AdminUserCreate(BaseModel):
+    username: str
+    email: str = ""
+    password: str
+    is_admin: bool = False
+
+
+class UserUpdate(BaseModel):
+    email: str | None = None
+    password: str | None = None
+    is_admin: bool | None = None
+
+
 class AdminStats(BaseModel):
     user_count: int
     destination_count: int

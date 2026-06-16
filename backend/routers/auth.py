@@ -13,6 +13,7 @@ from models.models import User, SavedItinerary
 from schemas.schemas import (
     UserCreate, UserLogin, UserOut, TokenOut,
     SavedItineraryCreate, SavedItineraryOut,
+    PasswordChange, UserUpdate,
 )
 
 MAX_USERS = 20
@@ -96,6 +97,80 @@ async def login(data: UserLogin, db: AsyncSession = Depends(get_db)):
 @router.get("/me", response_model=UserOut)
 async def me(current_user: User = Depends(get_current_user)):
     return UserOut.model_validate(current_user)
+
+
+@router.post("/change-password")
+async def change_password(
+    data: PasswordChange,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if not pwd_context.verify(data.old_password, current_user.hashed_password):
+        raise HTTPException(status_code=400, detail="原密码错误")
+    if len(data.new_password) < 6:
+        raise HTTPException(status_code=400, detail="新密码至少需要6位")
+    current_user.hashed_password = pwd_context.hash(data.new_password)
+    await db.commit()
+    return {"ok": True}
+
+
+@router.put("/me")
+async def update_profile(
+    data: UserUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if data.email is not None:
+        current_user.email = data.email
+    if data.password is not None:
+        if len(data.password) < 6:
+            raise HTTPException(status_code=400, detail="密码至少需要6位")
+        current_user.hashed_password = pwd_context.hash(data.password)
+    await db.commit()
+    return UserOut.model_validate(current_user)
+
+
+# ── Admin user management ──
+
+
+@router.delete("/users/{user_id}")
+async def delete_user(
+    user_id: int,
+    current_user: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if user_id == current_user.id:
+        raise HTTPException(status_code=400, detail="不能删除自己的账号")
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    await db.delete(user)
+    await db.commit()
+    return {"ok": True}
+
+
+@router.put("/users/{user_id}")
+async def update_user(
+    user_id: int,
+    data: UserUpdate,
+    current_user: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    if data.email is not None:
+        user.email = data.email
+    if data.password is not None:
+        user.hashed_password = pwd_context.hash(data.password)
+    if data.is_admin is not None:
+        if user_id == current_user.id:
+            raise HTTPException(status_code=400, detail="不能修改自己的管理员权限")
+        user.is_admin = data.is_admin
+    await db.commit()
+    return {"ok": True}
 
 
 # ── Saved Itineraries ──

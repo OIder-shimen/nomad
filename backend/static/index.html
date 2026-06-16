@@ -2819,6 +2819,10 @@ body::before {
           <label>密码</label>
           <input type="password" id="regPassword" placeholder="至少6位密码...">
         </div>
+        <div class="settings-field">
+          <label>确认密码</label>
+          <input type="password" id="regPasswordConfirm" placeholder="再次输入密码...">
+        </div>
         <div id="registerSlotsInfo" style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 12px; text-align: center;"></div>
         <div class="settings-modal-actions">
           <button class="btn btn-ghost btn-sm" id="settingsCancel2">取消</button>
@@ -2834,8 +2838,26 @@ body::before {
       <div style="margin: 16px 0; padding: 16px; background: var(--bg-deep); border-radius: var(--radius-sm);">
         <div style="font-weight: 600; font-size: 1.125rem; color: var(--gold);" id="displayUsername"></div>
         <div style="font-size: 0.75rem; color: var(--text-muted);" id="displayEmail"></div>
+        <div style="font-size: 0.6875rem; color: var(--text-muted); margin-top: 4px;" id="displayRole"></div>
       </div>
-      <p style="font-size: 0.75rem; color: var(--text-muted);">行程会自动同步到云端，登录其他设备即可恢复。</p>
+      <div id="passwordChangeSection" style="border-top: 1px solid var(--border-subtle); padding-top: 12px; margin-top: 8px;">
+        <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 8px; font-weight: 600;">修改密码</div>
+        <div class="settings-field">
+          <input type="password" id="changeOldPassword" placeholder="原密码...">
+        </div>
+        <div class="settings-field">
+          <input type="password" id="changeNewPassword" placeholder="新密码（至少6位）...">
+        </div>
+        <button class="btn btn-primary btn-sm" id="changePasswordBtn" style="width:100%;">更新密码</button>
+      </div>
+      <div id="adminPanel" style="display: none; border-top: 1px solid var(--border-subtle); padding-top: 12px; margin-top: 8px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+          <span style="font-size: 0.75rem; color: var(--gold); font-weight: 600;">管理面板</span>
+          <button class="btn btn-ghost btn-sm" id="adminToggleUsers" style="font-size: 0.6875rem;">用户列表</button>
+        </div>
+        <div id="adminUserList" style="display: none; max-height: 200px; overflow-y: auto; font-size: 0.6875rem;"></div>
+      </div>
+      <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 12px;">行程会自动同步到云端，登录其他设备即可恢复。</p>
       <div class="settings-modal-actions">
         <button class="btn btn-ghost btn-sm" id="settingsCancel3">关闭</button>
         <button class="btn btn-ghost btn-sm" id="logoutBtn" style="border-color: rgba(201,122,91,0.4); color: var(--copper);">退出登录</button>
@@ -4924,7 +4946,6 @@ function showToast(message) {
   let totalSlots = 20;
   let usedSlots = 0;
   let slotsLoaded = false;
-  let authRequired = !currentUser; // if not logged in, auth is mandatory
 
   async function loadSlots() {
     try {
@@ -4962,7 +4983,8 @@ function showToast(message) {
       userInfo.style.display = 'block';
       $('#displayUsername').textContent = currentUser.username;
       $('#displayEmail').textContent = currentUser.email || '未设置邮箱';
-      authRequired = false;
+      $('#displayRole').textContent = currentUser.is_admin ? '管理员账号' : '普通用户';
+      $('#adminPanel').style.display = currentUser.is_admin ? 'block' : 'none';
     } else {
       authForm.style.display = 'block';
       userInfo.style.display = 'none';
@@ -4998,7 +5020,6 @@ function showToast(message) {
   }
 
   function closeSettings() {
-    if (authRequired) return; // can't dismiss if not logged in
     overlay.style.display = 'none';
     if (lastFocusedEl && typeof lastFocusedEl.focus === 'function') {
       lastFocusedEl.focus();
@@ -5056,7 +5077,7 @@ function showToast(message) {
       const data = await resp.json();
       setAuth(data.access_token, data.user);
       if (navLoginBtn) navLoginBtn.textContent = data.user.username;
-      authRequired = false;
+
       showToast('欢迎回来，' + data.user.username + '！');
       closeSettings();
       saveState();
@@ -5075,7 +5096,9 @@ function showToast(message) {
     const email = $('#regEmail').value.trim();
     const password = $('#regPassword').value;
     if (!username || !password) { showToast('请填写用户名和密码'); return; }
+    const passwordConfirm = $('#regPasswordConfirm').value;
     if (password.length < 6) { showToast('密码至少6位'); return; }
+    if (password !== passwordConfirm) { showToast('两次输入的密码不一致'); return; }
     btn.disabled = true;
     btn.textContent = '注册中...';
     try {
@@ -5094,7 +5117,7 @@ function showToast(message) {
       const data = await resp.json();
       setAuth(data.access_token, data.user);
       if (navLoginBtn) navLoginBtn.textContent = data.user.username;
-      authRequired = false;
+
       showToast('注册成功！欢迎，' + data.user.username + '！');
       closeSettings();
       saveState();
@@ -5110,7 +5133,6 @@ function showToast(message) {
   $('#logoutBtn').addEventListener('click', () => {
     clearAuth();
     if (navLoginBtn) navLoginBtn.textContent = '登录';
-    authRequired = true;
     updateAuthUI();
     showToast('已退出登录');
     openSettings();
@@ -5122,6 +5144,62 @@ function showToast(message) {
   });
   $('#regPassword').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') $('#registerBtn').click();
+  });
+
+  // Password change
+  $('#changePasswordBtn').addEventListener('click', async () => {
+    const btn = $('#changePasswordBtn');
+    const oldPw = $('#changeOldPassword').value;
+    const newPw = $('#changeNewPassword').value;
+    if (!oldPw || !newPw) { showToast('请填写原密码和新密码'); return; }
+    if (newPw.length < 6) { showToast('新密码至少6位'); return; }
+    btn.disabled = true;
+    btn.textContent = '更新中...';
+    try {
+      const resp = await apiFetch('/auth/change-password', {
+        method: 'POST',
+        body: JSON.stringify({ old_password: oldPw, new_password: newPw })
+      });
+      if (!resp.ok) { const err = await resp.json(); showToast(err.detail || '修改失败'); btn.disabled = false; btn.textContent = '更新密码'; return; }
+      showToast('密码已更新');
+      $('#changeOldPassword').value = '';
+      $('#changeNewPassword').value = '';
+      btn.disabled = false;
+      btn.textContent = '更新密码';
+    } catch (e) { showToast('网络错误'); btn.disabled = false; btn.textContent = '更新密码'; }
+  });
+
+  // Admin panel
+  let adminUsersVisible = false;
+  $('#adminToggleUsers').addEventListener('click', async () => {
+    adminUsersVisible = !adminUsersVisible;
+    const listEl = $('#adminUserList');
+    if (!adminUsersVisible) { listEl.style.display = 'none'; return; }
+    listEl.style.display = 'block';
+    listEl.innerHTML = '<div style="color: var(--text-muted);">加载中...</div>';
+    try {
+      const resp = await apiFetch('/admin/users');
+      if (!resp.ok) { listEl.innerHTML = '<div style="color: var(--copper);">加载失败</div>'; return; }
+      const users = await resp.json();
+      listEl.innerHTML = users.map(u => {
+        const badge = u.is_admin ? ' <span style="color: var(--gold);">[管理员]</span>' : '';
+        return '<div style="padding: 6px 0; border-bottom: 1px solid var(--border-subtle); display: flex; align-items: center; justify-content: space-between;">' +
+          '<span>' + escapeHTML(u.username) + badge + '<br><span style="color: var(--text-muted); font-size: 0.625rem;">' + (u.email || '无邮箱') + '</span></span>' +
+          (u.id !== (currentUser && currentUser.id) ? '<button class="btn btn-ghost btn-sm del-user-btn" data-uid="' + u.id + '" style="color: var(--copper); font-size: 0.625rem; padding: 2px 6px;">删除</button>' : '') +
+          '</div>';
+      }).join('');
+      listEl.querySelectorAll('.del-user-btn').forEach(b => {
+        b.addEventListener('click', async () => {
+          const uid = b.getAttribute('data-uid');
+          if (!confirm('确认删除该用户？此操作不可撤销。')) return;
+          try {
+            const resp = await apiFetch('/auth/users/' + uid, { method: 'DELETE' });
+            if (resp.ok) { showToast('用户已删除'); $('#adminToggleUsers').click(); setTimeout(() => $('#adminToggleUsers').click(), 100); }
+            else { const err = await resp.json(); showToast(err.detail || '删除失败'); }
+          } catch (e) { showToast('网络错误'); }
+        });
+      });
+    } catch (e) { listEl.innerHTML = '<div style="color: var(--copper);">网络错误</div>'; }
   });
 
   // Initial UI state
