@@ -1074,6 +1074,319 @@ body::before {
   color: var(--copper);
 }
 
+/* ---- TRANSPORT LEG (between stops) ---- */
+.transport-leg {
+  position: relative;
+  margin: 4px 0 4px 28px;
+  padding: 12px 14px;
+  background: var(--bg-deep);
+  border: 1px dashed var(--border-subtle);
+  border-radius: var(--radius-md);
+  animation: fade-in-up 0.3s var(--ease-out-expo) both;
+}
+.transport-leg::before {
+  content: '';
+  position: absolute;
+  left: -17px;
+  top: -4px;
+  bottom: -4px;
+  width: 1px;
+  background: var(--border-subtle);
+}
+.transport-route {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+.transport-route .from-city,
+.transport-route .to-city {
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.transport-route .arrow {
+  color: var(--gold);
+  font-size: 1rem;
+}
+.transport-options {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.transport-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--duration-fast);
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  user-select: none;
+}
+.transport-option:hover {
+  border-color: var(--border-medium);
+  background: var(--bg-elevated);
+}
+.transport-option.active {
+  border-color: var(--gold);
+  background: rgba(201, 164, 75, 0.1);
+  color: var(--gold);
+}
+.transport-option .icon { font-size: 1.125rem; }
+.transport-option .price {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--sage-bright);
+}
+.transport-option.active .price { color: var(--gold-bright); }
+
+/* ---- DETAILED ITINERARY MODAL ---- */
+.detail-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 200;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.detail-modal-overlay.active {
+  display: flex;
+  opacity: 1;
+  pointer-events: all;
+}
+.detail-modal {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 720px;
+  max-height: 85vh;
+  overflow-y: auto;
+  position: relative;
+  transform: translateY(20px);
+  transition: transform 0.3s var(--ease-out-expo);
+}
+.detail-modal-overlay.active .detail-modal {
+  transform: translateY(0);
+}
+.detail-modal-header {
+  padding: 28px 32px 20px;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  background: var(--bg-surface);
+  z-index: 2;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+.detail-modal-title {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+.detail-modal-subtitle {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+.detail-modal-close {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 1.25rem;
+  cursor: pointer;
+  transition: all var(--duration-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.detail-modal-close:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+.detail-modal-body {
+  padding: 24px 32px 32px;
+}
+
+/* Day section */
+.day-section { margin-bottom: 32px; }
+.day-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--gold);
+}
+.day-number {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--gold), var(--copper));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--text-inverse);
+}
+.day-title {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+.day-city {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+/* Time slot */
+.time-slot {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.time-label {
+  width: 60px;
+  flex-shrink: 0;
+  text-align: right;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--gold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding-top: 4px;
+}
+.time-content {
+  flex: 1;
+  background: var(--bg-deep);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  border: 1px solid var(--border-subtle);
+}
+.time-content-title {
+  font-weight: 600;
+  font-size: 0.9375rem;
+  margin-bottom: 8px;
+}
+.time-content-desc {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+.time-content-image {
+  width: 100%;
+  height: 160px;
+  border-radius: var(--radius-sm);
+  background-size: cover;
+  background-position: center;
+  margin-top: 12px;
+  position: relative;
+  overflow: hidden;
+}
+.time-content-image::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.3), transparent 50%);
+}
+
+/* Transport segment in detail */
+.detail-transport {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  margin: 16px 0;
+  border: 1px solid var(--border-subtle);
+}
+.detail-transport-icon {
+  font-size: 2rem;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--bg-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-subtle);
+}
+.detail-transport-info { flex: 1; }
+.detail-transport-route {
+  font-weight: 600;
+  font-size: 0.9375rem;
+  margin-bottom: 4px;
+}
+.detail-transport-meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.detail-transport-price {
+  font-family: var(--font-mono);
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--gold);
+}
+
+/* Summary bar */
+.detail-summary-bar {
+  display: flex;
+  gap: 24px;
+  padding: 20px 32px;
+  background: var(--bg-deep);
+  border-top: 1px solid var(--border-subtle);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+.detail-summary-item { text-align: center; }
+.detail-summary-value {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--gold);
+}
+.detail-summary-label {
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.btn-print {
+  padding: 10px 20px;
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  font-weight: 600;
+  background: var(--gold);
+  color: var(--text-inverse);
+  border: none;
+  cursor: pointer;
+  transition: all var(--duration-fast);
+  font-family: var(--font-body);
+}
+.btn-print:hover {
+  background: var(--gold-bright);
+  transform: translateY(-1px);
+}
+
 /* Trip Summary */
 .itinerary-summary {
   margin-top: 20px;
@@ -2328,6 +2641,15 @@ body::before {
   .quiz-slider-group {
     min-width: 100%;
   }
+
+  .detail-modal { max-height: 90vh; border-radius: var(--radius-md); }
+  .detail-modal-header { padding: 20px 20px 16px; }
+  .detail-modal-body { padding: 20px; }
+  .time-slot { flex-direction: column; gap: 8px; }
+  .time-label { text-align: left; width: auto; }
+  .detail-summary-bar { flex-wrap: wrap; gap: 16px; padding: 16px 20px; }
+  .transport-options { gap: 6px; }
+  .transport-option { padding: 6px 10px; font-size: 0.75rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2756,6 +3078,9 @@ body::before {
         <button class="btn btn-primary btn-sm" id="saveItinerary">
           保存行程
         </button>
+        <button class="btn btn-primary btn-sm" id="viewDetailItinerary">
+          详细行程
+        </button>
       </div>
 
       <!-- Attractions panel (populated by Geoapify) -->
@@ -3045,6 +3370,7 @@ const attractionsCache = {};// keyed by dest.id: { data, timestamp }
 // ---- STATE ----
 let itinerary = [];
 let tripStartDate = new Date();
+let transportLegs = {};
 
 const STORAGE_KEY = 'nomad_itinerary';
 const START_DATE_KEY = 'nomad_trip_start';
@@ -4079,14 +4405,9 @@ ${destSummary}${itineraryCtx}
 \`\`\`
 confidence 是 0-100 的匹配度评分，rank 从 1 开始递增，matchReasons 列出 2-4 个推荐理由。`;
 
-      const resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
+      const resp = await apiFetch('/ai/chat', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer sk-e5c1d9d397a4470b863176f2ad0ac295'
-        },
         body: JSON.stringify({
-          model: 'deepseek-chat',
           messages: [
             { role: 'system', content: systemPrompt },
             ...conversationMessages
@@ -4834,6 +5155,92 @@ function renderSearchResults(results) {
   });
 }
 
+// ---- CITY ATTRACTIONS DATABASE ----
+const cityAttractions = {
+  '北京城区': ['天安门广场', '故宫博物院', '八达岭长城', '颐和园', '天坛公园', '圆明园遗址', '鸟巢体育场', '王府井大街'],
+  '上海城区': ['外滩', '东方明珠塔', '豫园', '南京路步行街', '上海迪士尼乐园', '田子坊', '新天地', '陆家嘴金融区'],
+  '成都市': ['宽窄巷子', '锦里古街', '大熊猫繁育研究基地', '武侯祠', '都江堰景区', '青城山', '春熙路', '文殊院'],
+  '西安市': ['秦始皇兵马俑', '大雁塔', '古城墙', '大唐不夜城', '华清宫', '钟鼓楼', '回民街', '陕西历史博物馆'],
+  '广州市': ['广州塔', '陈家祠', '越秀公园', '沙面岛', '北京路步行街', '白云山', '珠江夜游', '上下九步行街'],
+  '三亚市': ['亚龙湾', '天涯海角', '蜈支洲岛', '南山文化旅游区', '大小洞天', '大东海', '鹿回头公园', '椰梦长廊'],
+  '丽江市': ['丽江古城', '玉龙雪山', '蓝月谷', '束河古镇', '拉市海', '黑龙潭公园', '木府', '白沙古镇'],
+  '厦门市': ['鼓浪屿', '南普陀寺', '厦门大学', '环岛路', '曾厝垵', '中山路步行街', '集美学村', '园林植物园'],
+  '桂林市': ['漓江风景区', '象鼻山', '阳朔西街', '龙脊梯田', '两江四湖', '银子岩', '遇龙河', '十里画廊'],
+  '张家界市': ['张家界国家森林公园', '天门山', '玻璃栈道', '黄龙洞', '大峡谷玻璃桥', '袁家界', '宝峰湖', '金鞭溪'],
+  '深圳市': ['世界之窗', '欢乐谷', '大梅沙海滨公园', '东部华侨城', '深圳湾公园', '莲花山公园', '梧桐山', '华强北'],
+  '哈尔滨市': ['中央大街', '圣索菲亚大教堂', '冰雪大世界', '太阳岛', '松花江', '极地馆', '老道外', '伏尔加庄园'],
+  '武汉市': ['黄鹤楼', '东湖风景区', '户部巷', '武汉大学', '湖北省博物馆', '江汉路步行街', '昙华林', '古琴台'],
+  '杭州市': ['西湖', '灵隐寺', '宋城', '西溪湿地', '雷峰塔', '河坊街', '千岛湖', '断桥残雪'],
+  '南京市': ['中山陵', '夫子庙秦淮河', '明孝陵', '总统府', '玄武湖', '侵华日军南京大屠杀遇难同胞纪念馆', '鸡鸣寺', '老门东'],
+  '苏州市': ['拙政园', '虎丘', '周庄古镇', '山塘街', '留园', '金鸡湖', '同里古镇', '寒山寺'],
+  '青岛市': ['栈桥', '八大关', '崂山', '五四广场', '海底世界', '金沙滩', '啤酒博物馆', '小鱼山公园'],
+  '拉萨市': ['布达拉宫', '大昭寺', '八廓街', '纳木错', '色拉寺', '罗布林卡', '哲蚌寺', '羊卓雍措'],
+  '昆明市': ['石林风景区', '滇池', '翠湖公园', '云南民族村', '金马碧鸡坊', '西山龙门', '大观楼', '官渡古镇'],
+  '长沙市': ['橘子洲头', '岳麓山', '湖南省博物馆', '太平街', '黄兴路步行街', '天心阁', '世界之窗', '火宫殿'],
+  '郑州市': ['少林寺', '嵩山', '河南博物院', '二七纪念塔', '黄河风景名胜区', '康百万庄园', '绿博园', '伏羲山'],
+  '沈阳市': ['沈阳故宫', '张氏帅府', '北陵公园', '九一八历史博物馆', '中街步行街', '东陵公园', '棋盘山', '辽宁省博物馆'],
+  '大连市': ['星海广场', '老虎滩', '金石滩', '棒棰岛', '滨海路', '圣亚海洋世界', '俄罗斯风情街', '旅顺口'],
+  '重庆市': ['洪崖洞', '解放碑', '磁器口古镇', '武隆天生三桥', '长江索道', '大足石刻', '三峡博物馆', '南山一棵树'],
+  '天津市': ['天津之眼', '古文化街', '五大道', '意式风情区', '瓷房子', '盘山', '滨海新区', '南市食品街'],
+  '宁波市': ['天一阁', '东钱湖', '溪口风景区', '老外滩', '月湖公园', '南塘老街', '象山影视城', '保国寺'],
+  '无锡市': ['灵山大佛', '鼋头渚', '惠山古镇', '三国水浒城', '南长街', '蠡园', '拈花湾', '锡惠公园'],
+  '常州市': ['中华恐龙园', '天目湖', '南山竹海', '淹城春秋乐园', '天宁寺', '红梅公园', '常州博物馆', '青果巷'],
+  '合肥市': ['包公园', '三河古镇', '逍遥津公园', '李鸿章故居', '安徽省博物馆', '巢湖', '岱山湖', '合肥野生动物园'],
+  '南昌市': ['滕王阁', '八一广场', '庐山', '鄱阳湖', '八一起义纪念馆', '绳金塔', '梅岭', '秋水广场'],
+  '福州市': ['三坊七巷', '鼓山', '西湖公园', '平潭岛', '于山', '福州国家森林公园', '上下杭', '西禅寺'],
+  '贵阳市': ['黔灵山公园', '甲秀楼', '青岩古镇', '花溪公园', '天河潭', '红枫湖', '南江大峡谷', '息烽温泉'],
+  '南宁市': ['青秀山', '南湖公园', '广西民族博物馆', '扬美古镇', '动物园', '民歌湖', '龙虎山', '大明山'],
+  '海口市': ['骑楼老街', '假日海滩', '五公祠', '火山口地质公园', '万绿园', '观澜湖', '海瑞墓', '东寨港红树林'],
+  '兰州市': ['黄河铁桥', '白塔山公园', '甘肃省博物馆', '五泉山', '黄河母亲雕像', '兴隆山', '水车博览园', '正宁路夜市'],
+  '西宁市': ['青海湖', '塔尔寺', '东关清真大寺', '青海省博物馆', '日月山', '丹噶尔古城', '北禅寺', '南凉虎台遗址'],
+  '乌鲁木齐市': ['天山天池', '大巴扎', '红山公园', '新疆维吾尔自治区博物馆', '天山大峡谷', '水磨沟公园', '南山牧场', '五彩湾'],
+  '银川市': ['镇北堡西部影城', '西夏王陵', '贺兰山岩画', '沙湖', '水洞沟', '中华回乡文化园', '鸣翠湖', '黄沙古渡'],
+  '呼和浩特市': ['大召寺', '昭君墓', '内蒙古博物院', '五塔寺', '哈素海', '席力图召', '和林格尔土城子', '大青山'],
+  '太原市': ['晋祠', '双塔寺', '山西博物院', '平遥古城', '蒙山大佛', '天龙山', '汾河公园', '食品街'],
+  '石家庄市': ['赵州桥', '西柏坡', '正定古城', '石家庄动物园', '抱犊寨', '嶂石岩', '苍岩山', '植物园'],
+  '济南市': ['趵突泉', '大明湖', '千佛山', '芙蓉街', '五龙潭', '黑虎泉', '山东博物馆', '红叶谷'],
+  '长春市': ['伪满皇宫博物院', '长影世纪城', '净月潭', '南湖公园', '世界雕塑公园', '一汽红旗文化展馆', '般若寺', '长春动植物园'],
+  '敦煌市': ['莫高窟', '鸣沙山月牙泉', '阳关', '玉门关', '雅丹地质公园', '敦煌古城', '西千佛洞', '敦煌博物馆'],
+  '洛阳市': ['龙门石窟', '白马寺', '老君山', '洛阳博物馆', '关林', '明堂天堂', '丽景门', '龙潭大峡谷'],
+  '北海市': ['银滩', '涠洲岛', '老街', '海底世界', '冠头岭', '侨港风情街', '金海湾红树林', '北部湾广场'],
+  '大理市': ['洱海', '崇圣寺三塔', '大理古城', '苍山', '蝴蝶泉', '喜洲古镇', '双廊', '南诏风情岛'],
+  '西双版纳': ['野象谷', '傣族园', '原始森林公园', '热带植物园', '曼听公园', '望天树', '勐泐大佛寺', '打洛口岸'],
+  '平遥市': ['平遥古城墙', '日升昌票号', '县衙', '双林寺', '镇国寺', '明清街', '文庙', '城隍庙'],
+};
+
+function getAttractionsForCity(cityName) {
+  const list = cityAttractions[cityName];
+  if (list) return list;
+  const short = cityName.replace(/市$/, '').replace(/城区$/, '');
+  return [`${short}标志性景区`, `${short}历史文化街区`, `${short}市民公园`, `${short}博物馆`, `${short}特色小吃街`, `${short}滨江/滨湖步道`, `${short}商业步行街`, `${short}古建筑群`];
+}
+
+// ---- TRANSPORT DATA ----
+function getTransportPrice(fromCity, toCity) {
+  const key = (fromCity + '|' + toCity);
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) hash = ((hash << 5) - hash + key.charCodeAt(i)) | 0;
+  hash = Math.abs(hash);
+  const distance = 200 + (hash % 1800);
+  const trainPrice = Math.round(distance * 0.45 / 10) * 10;
+  const flightPrice = Math.round((distance * 0.8 + 200) / 10) * 10;
+  const busPrice = Math.round(distance * 0.3 / 5) * 5;
+  const ferryPrice = Math.round(distance * 0.35 / 5) * 5;
+  return { train: trainPrice, flight: flightPrice, bus: busPrice, ferry: ferryPrice, distance };
+}
+
+function getTransportMeta(mode, fromCity, toCity) {
+  const tp = getTransportPrice(fromCity, toCity);
+  const distance = tp.distance;
+  const meta = {
+    train:  { label: '高铁', icon: '&#128646;', duration: `${Math.ceil(distance / 250)}小时${(distance % 250) > 100 ? '30分' : ''}`, price: tp.train },
+    flight: { label: '飞机', icon: '&#9992;', duration: `${Math.ceil(distance / 800) + 1}小时`, price: tp.flight },
+    bus:    { label: '大巴', icon: '&#128652;', duration: `${Math.ceil(distance / 90)}小时`, price: tp.bus },
+    ferry:  { label: '轮船', icon: '&#128674;', duration: `${Math.ceil(distance / 40)}小时`, price: tp.ferry },
+  };
+  return meta[mode] || meta.train;
+}
+
 // ---- ITINERARY MANAGEMENT ----
 function addToItinerary(destId) {
   if (typeof destId === 'object' && destId !== null) {
@@ -4907,8 +5314,8 @@ function updateItinerary() {
   // Sync count first
   count.textContent = `${itinerary.length} 站`;
 
-  // Remove old stop elements without destroying the empty node
-  timeline.querySelectorAll('.itinerary-stop').forEach(el => el.remove());
+  // Remove old stop + transport elements without destroying the empty node
+  timeline.querySelectorAll('.itinerary-stop, .transport-leg').forEach(el => el.remove());
 
   if (itinerary.length === 0) {
     empty.style.display = '';
@@ -4922,8 +5329,9 @@ function updateItinerary() {
   const startDate = new Date(tripStartDate);
   let currentDate = new Date(startDate);
 
-  // Build stops HTML and append (preserves empty node reference)
-  const stopsHTML = itinerary.map((d, i) => {
+  // Build stops HTML + transport legs
+  let stopsHTML = '';
+  itinerary.forEach((d, i) => {
     const stayDays = d.stayDays || 2;
     const arrivalDate = new Date(currentDate);
     currentDate.setDate(currentDate.getDate() + stayDays);
@@ -4935,7 +5343,7 @@ function updateItinerary() {
       return `${m}月${day}日`;
     };
 
-    return `
+    stopsHTML += `
       <div class="itinerary-stop" data-index="${i + 1}" style="animation-delay: ${i * 0.08}s;">
         <div class="itinerary-stop-info">
           <span class="itinerary-stop-city">${d.city}, ${d.country}</span>
@@ -4951,11 +5359,46 @@ function updateItinerary() {
         </div>
       </div>
     `;
-  }).join('');
+
+    // Transport leg between stops
+    if (i < itinerary.length - 1) {
+      const nextCity = itinerary[i + 1];
+      const legKey = `${d.id}_${nextCity.id}`;
+      const saved = transportLegs[legKey] || {};
+      const activeMode = saved.mode || '';
+      const tp = getTransportPrice(d.city, nextCity.city);
+      stopsHTML += `
+        <div class="transport-leg" data-leg="${legKey}">
+          <div class="transport-route">
+            <span class="from-city">${d.city}</span>
+            <span class="arrow">→</span>
+            <span class="to-city">${nextCity.city}</span>
+          </div>
+          <div class="transport-options">
+            <div class="transport-option ${activeMode === 'train' ? 'active' : ''}" data-mode="train" data-leg="${legKey}" data-from="${d.city}" data-to="${nextCity.city}">
+              <span class="icon">&#128646;</span>
+              <span>高铁</span>
+              <span class="price">¥${tp.train}</span>
+            </div>
+            <div class="transport-option ${activeMode === 'flight' ? 'active' : ''}" data-mode="flight" data-leg="${legKey}" data-from="${d.city}" data-to="${nextCity.city}">
+              <span class="icon">&#9992;</span>
+              <span>飞机</span>
+              <span class="price">¥${tp.flight}</span>
+            </div>
+            <div class="transport-option ${activeMode === 'bus' ? 'active' : ''}" data-mode="bus" data-leg="${legKey}" data-from="${d.city}" data-to="${nextCity.city}">
+              <span class="icon">&#128652;</span>
+              <span>大巴</span>
+              <span class="price">¥${tp.bus}</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+  });
 
   timeline.insertAdjacentHTML('beforeend', stopsHTML);
 
-  // Action handlers
+  // Action handlers for stop buttons
   timeline.querySelectorAll('.itinerary-stop button').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -4970,15 +5413,148 @@ function updateItinerary() {
     });
   });
 
+  // Action handlers for transport option clicks
+  timeline.querySelectorAll('.transport-option').forEach(opt => {
+    opt.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const leg = opt.dataset.leg;
+      const mode = opt.dataset.mode;
+      const from = opt.dataset.from;
+      const to = opt.dataset.to;
+      if (!transportLegs[leg]) transportLegs[leg] = { from, to };
+      transportLegs[leg].mode = mode;
+      transportLegs[leg].price = getTransportPrice(from, to)[mode];
+      updateItinerary();
+    });
+  });
+
   // Summary
   summary.style.display = '';
   const totalDays = itinerary.reduce((sum, d) => sum + (d.stayDays || 2), 0);
   const totalBudget = itinerary.reduce((sum, d) => sum + d.cost * (d.stayDays || 2), 0);
+  const totalTransport = Object.values(transportLegs).reduce((s, l) => s + (l.price || 0), 0);
   $('#summaryDays').textContent = `${totalDays} 天`;
   $('#summaryStops').textContent = `${itinerary.length} 个`;
-  $('#summaryBudget').textContent = fmtMoney(totalBudget);
+  $('#summaryBudget').textContent = fmtMoney(totalBudget + totalTransport);
 }
 
+// ---- DETAILED ITINERARY MODAL ----
+function openDetailModal() {
+  if (itinerary.length === 0) {
+    showToast('请先添加目的地');
+    return;
+  }
+  generateDetailedItinerary();
+  const modal = document.getElementById('detailModalOverlay');
+  if (modal) {
+    modal.classList.add('active');
+  }
+  document.body.style.overflow = 'hidden';
+}
+
+function closeDetailModal() {
+  const modal = document.getElementById('detailModalOverlay');
+  if (modal) {
+    modal.classList.remove('active');
+  }
+  document.body.style.overflow = '';
+}
+
+function generateDetailedItinerary() {
+  const container = $('#detailModalBody');
+  const startDate = new Date(tripStartDate);
+  let currentDate = new Date(startDate);
+  const totalDays = itinerary.reduce((sum, d) => sum + (d.stayDays || 2), 0);
+  const totalBudget = itinerary.reduce((sum, d) => sum + d.cost * (d.stayDays || 2), 0);
+  const totalTransport = Object.values(transportLegs).reduce((s, l) => s + (l.price || 0), 0);
+
+  let dayCounter = 0;
+  let html = '';
+
+  for (let i = 0; i < itinerary.length; i++) {
+    const dest = itinerary[i];
+    const stayDays = dest.stayDays || 2;
+
+    const attractions = getAttractionsForCity(dest.city);
+    const shortName = dest.city.replace(/市$/, '').replace(/城区$/, '');
+
+    for (let d = 0; d < stayDays; d++) {
+      dayCounter++;
+      const thisDate = new Date(currentDate);
+      currentDate.setDate(currentDate.getDate() + 1);
+      const dateStr = `${thisDate.getMonth() + 1}月${thisDate.getDate()}日`;
+      const weekday = ['周日','周一','周二','周三','周四','周五','周六'][thisDate.getDay()];
+
+      const a1 = attractions[(d * 3) % attractions.length];
+      const a2 = attractions[(d * 3 + 1) % attractions.length];
+      const a3 = attractions[(d * 3 + 2) % attractions.length];
+
+      const cityHash = dest.id.split('').reduce((h, c) => ((h << 5) - h + c.charCodeAt(0)) | 0, 0);
+      const imgSeed = `${dest.id}_day${d}_${Math.abs(cityHash) % 100}`;
+      const imgUrl = `https://picsum.photos/seed/${imgSeed}/400/300`;
+
+      html += `
+        <div class="day-section">
+          <div class="day-header">
+            <div class="day-number">${dayCounter}</div>
+            <div>
+              <div class="day-title">第${dayCounter}天 · ${dateStr} ${weekday}</div>
+              <div class="day-city">${dest.city}, ${dest.country}</div>
+            </div>
+          </div>
+          <div class="time-slot">
+            <div class="time-label">上午</div>
+            <div class="time-content">
+              <div class="time-content-title">参观${a1}</div>
+              <div class="time-content-desc">上午前往${a1}，这是${shortName}最具代表性的景点之一。建议游览时间3-4小时，可在景区内拍摄留念，感受${shortName}独特的自然风光与人文底蕴。</div>
+              <div class="time-content-image" style="background-image: url('${imgUrl}');"></div>
+            </div>
+          </div>
+          <div class="time-slot">
+            <div class="time-label">下午</div>
+            <div class="time-content">
+              <div class="time-content-title">游览${a2}</div>
+              <div class="time-content-desc">下午游览${a2}，深入了解${shortName}的历史文化。途中可品尝当地特色小吃，感受${shortName}独特的城市韵味。</div>
+            </div>
+          </div>
+          <div class="time-slot">
+            <div class="time-label">晚上</div>
+            <div class="time-content">
+              <div class="time-content-title">夜访${a3}</div>
+              <div class="time-content-desc">夜幕降临后前往${a3}，欣赏${shortName}璀璨的夜景。体验当地丰富的夜间娱乐活动，品尝地道夜宵。</div>
+            </div>
+          </div>
+      `;
+
+      html += '</div>';
+
+      if (d === stayDays - 1 && i < itinerary.length - 1) {
+        const nextDest = itinerary[i + 1];
+        const legKey = `${dest.id}_${nextDest.id}`;
+        const leg = transportLegs[legKey];
+        if (leg && leg.mode) {
+          const meta = getTransportMeta(leg.mode, dest.city, nextDest.city);
+          html += `
+            <div class="detail-transport">
+              <div class="detail-transport-icon">${meta.icon}</div>
+              <div class="detail-transport-info">
+                <div class="detail-transport-route">${dest.city} → ${nextDest.city}</div>
+                <div class="detail-transport-meta">${meta.label} · ${meta.duration} · ${getTransportPrice(dest.city, nextDest.city).distance}公里</div>
+              </div>
+              <div class="detail-transport-price">¥${meta.price}</div>
+            </div>
+          `;
+        }
+      }
+    }
+  }
+
+  container.innerHTML = html;
+
+  $('#detailTotalDays').textContent = totalDays;
+  $('#detailTotalStops').textContent = itinerary.length;
+  $('#detailTotalBudget').textContent = `¥${(totalBudget + totalTransport).toLocaleString()}`;
+}
 
 
 // ---- TOAST ----
@@ -5341,6 +5917,13 @@ $('#saveItinerary').addEventListener('click', () => {
   showToast('行程已保存到本地浏览器');
 });
 
+// ---- DETAIL MODAL EVENTS ----
+$('#viewDetailItinerary').addEventListener('click', openDetailModal);
+$('#detailModalClose').addEventListener('click', closeDetailModal);
+$('#detailModalOverlay').addEventListener('click', (e) => {
+  if (e.target === $('#detailModalOverlay')) closeDetailModal();
+});
+
 // ---- ONE-CLICK TRAVEL PLAN GENERATOR ----
 $('#generatePlanBtn').addEventListener('click', () => {
   if (recentRecommendations.length === 0) {
@@ -5586,6 +6169,35 @@ console.log('%c TD %c AI 中国旅游推荐已就绪 ',
   'background: #141b2d; color: #e8e5df; padding: 4px 8px; font-size: 14px; border-radius: 0 4px 4px 0;'
 );
 </script>
+
+<!-- Detail Itinerary Modal -->
+<div class="detail-modal-overlay" id="detailModalOverlay">
+  <div class="detail-modal">
+    <div class="detail-modal-header">
+      <div>
+        <div class="detail-modal-title">详细行程单</div>
+        <div class="detail-modal-subtitle" id="detailModalSubtitle">包含交通与每日安排</div>
+      </div>
+      <button class="detail-modal-close" id="detailModalClose">&times;</button>
+    </div>
+    <div class="detail-modal-body" id="detailModalBody"></div>
+    <div class="detail-summary-bar">
+      <div class="detail-summary-item">
+        <div class="detail-summary-value" id="detailTotalDays">0</div>
+        <div class="detail-summary-label">总天数</div>
+      </div>
+      <div class="detail-summary-item">
+        <div class="detail-summary-value" id="detailTotalStops">0</div>
+        <div class="detail-summary-label">目的地</div>
+      </div>
+      <div class="detail-summary-item">
+        <div class="detail-summary-value" id="detailTotalBudget">¥0</div>
+        <div class="detail-summary-label">预估总预算</div>
+      </div>
+      <button class="btn-print" style="margin-left:auto;" onclick="window.print()">打印行程单</button>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>

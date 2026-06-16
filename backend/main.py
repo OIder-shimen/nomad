@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from database import init_db
-from routers import auth, destinations, proxy, admin
+from routers import auth, destinations, proxy, admin, ai
 
 
 @asynccontextmanager
@@ -32,6 +32,7 @@ app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(destinations.router, prefix="/api/destinations", tags=["Destinations"])
 app.include_router(proxy.router, prefix="/api/proxy", tags=["API Proxy"])
 app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
+app.include_router(ai.router, prefix="/api/ai", tags=["AI"])
 
 # Serve frontend static files at root
 app.mount("/", StaticFiles(directory="static", html=True), name="static")

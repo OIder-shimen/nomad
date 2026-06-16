@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     unsplash_access_key: str = ""
     geoapify_api_key: str = ""
     amap_web_api_key: str = ""
+    deepseek_api_key: str = ""
 
     # Auth
     secret_key: str = "change-me-to-a-random-string-at-least-32-chars"
