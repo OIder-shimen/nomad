@@ -2338,6 +2338,12 @@ body::before {
   }
   html { scroll-behavior: auto; }
 }
+/* Scenario Bar */
+.scenario-bar { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; max-width: 680px; margin: 0 auto 16px; animation: fade-in-up 0.8s var(--ease-out-expo) 0.5s both; }
+.scenario-btn { padding: 8px 16px; border-radius: 20px; font-size: 0.8125rem; font-weight: 500; background: var(--bg-elevated); color: var(--text-secondary); border: 1px solid var(--border-subtle); cursor: pointer; transition: all var(--duration-fast); font-family: var(--font-body); white-space: nowrap; }
+.scenario-btn:hover { border-color: var(--gold); color: var(--gold); }
+.scenario-btn.active { background: rgba(201, 164, 75, 0.15); border-color: var(--gold); color: var(--gold); }
+
 /* Chat Interface */
 .chat-container { animation: fade-in-up 0.8s var(--ease-out-expo) 0.65s both; max-width: 680px; margin: 0 auto; background: var(--bg-surface); border-radius: var(--radius-xl); border: 1px solid var(--border-subtle); overflow: hidden; display: flex; flex-direction: column; height: 520px; }
 .chat-messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
@@ -2469,6 +2475,16 @@ body::before {
       与 TD AI 旅行助手直接对话。告诉我你的预算、兴趣和偏好，让 AI 为你智能分析、
       精准匹配最合适的中国目的地，并提供专业的旅行规划建议。
     </p>
+
+    <!-- Scenario Quick Select -->
+    <div class="scenario-bar" id="scenarioBar">
+      <button class="scenario-btn active" data-style="智能推荐">✨ 智能推荐</button>
+      <button class="scenario-btn" data-style="背包穷游">🎒 背包穷游</button>
+      <button class="scenario-btn" data-style="舒适休闲">🌿 舒适休闲</button>
+      <button class="scenario-btn" data-style="奢华体验">👑 奢华体验</button>
+      <button class="scenario-btn" data-style="亲子家庭">👨‍👩‍👧 亲子家庭</button>
+      <button class="scenario-btn" data-style="周末短途">🚗 周末短途</button>
+    </div>
 
     <!-- AI Chat Interface -->
     <div class="chat-container" id="chatContainer">
@@ -2710,7 +2726,10 @@ body::before {
           <span class="summary-label">预估预算</span>
           <span class="summary-value gold" id="summaryBudget">¥0</span>
         </div>
-        <button class="btn btn-primary btn-sm" id="saveItinerary" style="margin-left: auto;">
+        <button class="btn btn-primary btn-sm" id="shareItinerary" style="margin-left: auto;">
+          分享行程
+        </button>
+        <button class="btn btn-primary btn-sm" id="saveItinerary">
           保存行程
         </button>
       </div>
@@ -3845,6 +3864,7 @@ function computeRecommendations(profile) {
     if (style === '舒适休闲') { wScenicAdj += 0.05; wCrowdAdj += 0.05; }
     if (style === '奢华体验') { wScenicAdj += 0.05; wBudgetAdj -= 0.05; }
     if (style === '亲子家庭') { wTraffic += 0.05; wCrowdAdj += 0.05; wAQI += 0.03; }
+    if (style === '周末短途') { wBudgetAdj += 0.03; wTraffic += 0.1; wCrowdAdj -= 0.02; }
 
     // Boost niche destinations for "户外探险" or "自然风光" interests
     let nicheBoost = 0;
@@ -4013,10 +4033,17 @@ function buildMatchReasons(dest, profile, dims, holiday) {
         `- ${d.city}(${d.region}, id:${d.id}): 日均¥${d.cost}, 兴趣[${d.interests.join(',')}], 气候${d.climateScore}/100, 交通${d.trafficScore}/100, 拥挤${d.crowdLevel}/100, 景点数${d.scenicSpots}, 小众度${d.nicheScore}/100`
       ).join('\n');
 
+      const itineraryCtx = itinerary.length > 0
+        ? `\n## 当前行程\n用户正在规划以下行程：${itinerary.map(s => s.city + '(' + s.stayDays + '天)').join(' → ')}。如果用户询问行程相关问题，请结合此行程回答。`
+        : '';
+
       const systemPrompt = `你是 TD AI 旅行规划助手，专门帮助用户在中国境内寻找最佳旅游目的地。你必须通过对话理解用户的偏好（预算、兴趣、季节、风格等），然后从下方目的地数据库中匹配最合适的目的地。
 
+## 用户当前出行模式
+用户选择的出行风格是：${currentScenario}。请根据此风格调整你的推荐策略。
+
 ## 目的地数据库
-${destSummary}
+${destSummary}${itineraryCtx}
 
 ## 回复格式
 1. 先以自然对话方式回复用户，给出你的推荐理由
@@ -5242,6 +5269,24 @@ function renderAttractions() {
   `).join('');
 }
 
+// ---- SHARE ITINERARY ----
+$('#shareItinerary').addEventListener('click', () => {
+  if (itinerary.length === 0) {
+    showToast('请先添加目的地到行程');
+    return;
+  }
+  const data = itinerary.map(s => `${s.city}|${s.stayDays}|${s.cost}`).join(',');
+  const params = new URLSearchParams();
+  params.set('plan', btoa(unescape(encodeURIComponent(data))));
+  const shareUrl = location.origin + location.pathname + '?' + params.toString();
+  navigator.clipboard.writeText(shareUrl).then(() => {
+    showToast('行程链接已复制到剪贴板！');
+  }).catch(() => {
+    // Fallback: show in prompt
+    prompt('复制以下链接分享行程：', shareUrl);
+  });
+});
+
 // ---- SAVE ITINERARY ----
 $('#saveItinerary').addEventListener('click', () => {
   if (itinerary.length === 0) {
@@ -5382,6 +5427,86 @@ document.querySelectorAll('.nav-links a').forEach(link => {
     });
   });
 })();
+
+// ---- SCENARIO BAR ----
+let currentScenario = '智能推荐';
+$('#scenarioBar').querySelectorAll('.scenario-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    $('#scenarioBar').querySelectorAll('.scenario-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentScenario = btn.dataset.style;
+    // Update suggestion chips based on scenario
+    const scenarioPrompts = {
+      '智能推荐': ['这季节去哪里最合适？', '推荐3个高性价比目的地', '我想看自然风光，预算1000以内'],
+      '背包穷游': ['预算500以内的穷游路线', '青旅+拼车怎么玩省钱？', '推荐冷门但惊艳的小众景点'],
+      '舒适休闲': ['气候温和的度假城市推荐', '适合发呆放空的地方', '慢节奏深度游线路推荐'],
+      '奢华体验': ['顶级酒店+米其林美食之旅', '私人定制高端线路推荐', '头等舱+五星酒店目的地'],
+      '亲子家庭': ['带娃友好城市推荐', '有动物园和主题乐园的城市', '亲子研学旅行目的地'],
+      '周末短途': ['上海周边2日游推荐', '北京周末自驾去处', '高铁2小时直达的短途旅行'],
+    };
+    const prompts = scenarioPrompts[currentScenario] || scenarioPrompts['智能推荐'];
+    const container = $('#chatSuggestions');
+    if (!container) return;
+    container.innerHTML = prompts.map(p =>
+      `<button class="chat-suggestion-chip" data-text="${p}">${p}</button>`
+    );
+    container.querySelectorAll('.chat-suggestion-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const welcome = $('#chatWelcome');
+        if (welcome) welcome.style.display = 'none';
+        const input = $('#chatInput');
+        const sendBtn = $('#chatSendBtn');
+        if (input && sendBtn) {
+          input.value = chip.dataset.text;
+          sendBtn.click();
+        }
+      });
+    });
+    showToast('已切换到：' + currentScenario);
+  });
+});
+
+// ---- LOAD SHARED ITINERARY ----
+(function loadSharedPlan() {
+  const params = new URLSearchParams(location.search);
+  const planData = params.get('plan');
+  if (!planData) return;
+  try {
+    const decoded = decodeURIComponent(escape(atob(planData)));
+    const entries = decoded.split(',');
+    entries.forEach(entry => {
+      const [city, stayDays, cost] = entry.split('|');
+      const dest = destinations.find(d => d.city === city);
+      if (dest) {
+        itinerary.push({ ...dest, stayDays: parseInt(stayDays) || 2 });
+      }
+    });
+    if (itinerary.length > 0) {
+      renderItinerary();
+      renderAttractions();
+      updateSummary();
+      showToast('已加载分享的行程：' + itinerary.map(s => s.city).join(' → '));
+    }
+  } catch(e) { /* invalid share link */ }
+})();
+
+// ---- WEATHER ALERT BADGE ----
+function checkWeatherAlerts() {
+  if (itinerary.length === 0) return;
+  itinerary.forEach(stop => {
+    const d = destinations.find(d => d.id === stop.id);
+    if (!d || !d.weather) return;
+    const cond = d.weather.condition || '';
+    if (cond.includes('雨') || cond.includes('雪') || cond.includes('暴') || cond.includes('霾')) {
+      showToast('⚠ ' + d.city + '天气预警：' + cond + '，请注意出行安全');
+    }
+  });
+}
+
+// Auto-refresh weather every 3 minutes for itinerary cities
+setInterval(() => {
+  if (itinerary.length > 0) checkWeatherAlerts();
+}, 180000);
 
 console.log('%c TD %c AI 中国旅游推荐已就绪 ',
   'background: #c9a44b; color: #0d1220; padding: 4px 8px; font-weight: 700; font-size: 14px; border-radius: 4px 0 0 4px;',
