@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TD Admin — 用户管理后台</title>
+<style>
+:root {
+  --bg-deep: #080c14;
+  --bg-primary: #0d1220;
+  --bg-surface: #141b2d;
+  --bg-elevated: #1a2340;
+  --bg-glass: rgba(20, 27, 45, 0.65);
+  --gold: #c9a44b;
+  --gold-bright: #e2c06e;
+  --copper: #c97a5b;
+  --copper-bright: #e89574;
+  --text-primary: #e8e5df;
+  --text-secondary: #a09b93;
+  --text-muted: #6b6560;
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-medium: rgba(255, 255, 255, 0.1);
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --font-body: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Cascadia Code', 'Fira Code', monospace;
+}
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html { font-size: 16px; -webkit-font-smoothing: antialiased; }
+body {
+  font-family: var(--font-body);
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+body::before {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background: radial-gradient(ellipse at 30% 20%, rgba(201,164,75,0.04) 0%, transparent 60%),
+              radial-gradient(ellipse at 70% 80%, rgba(201,122,91,0.03) 0%, transparent 60%);
+}
+
+/* ---- Login ---- */
+.login-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 40px 32px;
+  width: 100%;
+  max-width: 400px;
+  position: relative;
+  z-index: 1;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+}
+.login-card h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 4px;
+}
+.login-card .subtitle {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-align: center;
+  margin-bottom: 28px;
+}
+.form-group { margin-bottom: 16px; }
+.form-group label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+.form-group input {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--bg-deep);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  transition: border-color 0.2s;
+}
+.form-group input:focus {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(201,164,75,0.1);
+}
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 10px 20px; border: none; border-radius: var(--radius-sm);
+  font-size: 0.8125rem; font-weight: 600; cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-primary { background: var(--gold); color: var(--bg-deep); width: 100%; }
+.btn-primary:hover { background: var(--gold-bright); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-ghost { background: transparent; border: 1px solid var(--border-medium); color: var(--text-secondary); }
+.btn-ghost:hover { border-color: var(--gold); color: var(--text-primary); }
+.btn-danger { border: 1px solid rgba(201,122,91,0.4); color: var(--copper); background: transparent; }
+.btn-danger:hover { background: rgba(201,122,91,0.1); }
+.btn-sm { padding: 5px 10px; font-size: 0.6875rem; }
+.error-msg { color: var(--copper); font-size: 0.75rem; text-align: center; margin-top: 12px; min-height: 20px; }
+
+/* ---- Dashboard ---- */
+.dashboard { display: none; position: relative; z-index: 1; width: 100%; max-width: 1000px; }
+.dash-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 28px; flex-wrap: wrap; gap: 12px;
+}
+.dash-header h2 { font-size: 1.25rem; font-weight: 600; }
+.dash-header .user-badge {
+  display: flex; align-items: center; gap: 12px;
+  font-size: 0.75rem; color: var(--text-secondary);
+}
+.stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
+.stat-card {
+  background: var(--bg-surface); border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md); padding: 20px;
+}
+.stat-card .stat-value { font-size: 2rem; font-weight: 700; color: var(--gold); }
+.stat-card .stat-label { font-size: 0.6875rem; color: var(--text-muted); margin-top: 4px; }
+
+.toolbar { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+.toolbar .search-input {
+  flex: 1; min-width: 200px; padding: 8px 14px;
+  background: var(--bg-deep); border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm); color: var(--text-primary); font-size: 0.8125rem;
+}
+.toolbar .search-input:focus { outline: none; border-color: var(--gold); }
+
+.table-wrap {
+  background: var(--bg-surface); border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md); overflow: hidden;
+}
+table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
+thead { background: var(--bg-elevated); }
+th {
+  padding: 12px 16px; text-align: left; font-weight: 600;
+  color: var(--text-secondary); border-bottom: 1px solid var(--border-medium);
+  white-space: nowrap;
+}
+td { padding: 10px 16px; border-bottom: 1px solid var(--border-subtle); }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(255,255,255,0.02); }
+.badge {
+  display: inline-block; padding: 2px 8px; border-radius: 10px;
+  font-size: 0.625rem; font-weight: 600;
+}
+.badge-admin { background: rgba(201,164,75,0.15); color: var(--gold); }
+.badge-user { background: rgba(255,255,255,0.06); color: var(--text-secondary); }
+.action-btns { display: flex; gap: 6px; }
+/* ---- Modal ---- */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+  display: none; align-items: center; justify-content: center;
+  z-index: 100; padding: 24px;
+}
+.modal-overlay.active { display: flex; }
+.modal {
+  background: var(--bg-surface); border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg); padding: 28px 24px;
+  width: 100%; max-width: 420px;
+  box-shadow: 0 12px 60px rgba(0,0,0,0.6);
+}
+.modal h3 { font-size: 1rem; margin-bottom: 20px; }
+.modal .form-group { margin-bottom: 14px; }
+.modal-actions { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
+
+.toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: var(--bg-elevated); color: var(--text-primary);
+  padding: 10px 24px; border-radius: var(--radius-md);
+  font-size: 0.75rem; border: 1px solid var(--border-medium);
+  z-index: 200; animation: toast-in 0.3s ease;
+}
+@keyframes toast-in { from { opacity: 0; transform: translateX(-50%) translateY(12px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+
+.empty-state { text-align: center; padding: 48px 24px; color: var(--text-muted); font-size: 0.8125rem; }
+
+@media (max-width: 640px) {
+  .stats-row { grid-template-columns: 1fr; }
+  th:nth-child(1), td:nth-child(1) { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- ===== LOGIN ===== -->
+<div class="login-card" id="loginCard">
+  <h1>TD Admin</h1>
+  <div class="subtitle">用户账号管理后台</div>
+  <div class="form-group">
+    <label>管理员账号</label>
+    <input type="text" id="loginUsername" placeholder="输入管理员用户名" autocomplete="username">
+  </div>
+  <div class="form-group">
+    <label>管理员密码</label>
+    <input type="password" id="loginPassword" placeholder="输入密码" autocomplete="current-password">
+  </div>
+  <button class="btn btn-primary" id="loginBtn">登录管理后台</button>
+  <div class="error-msg" id="loginError"></div>
+  <div style="text-align: center; margin-top: 16px; font-size: 0.6875rem; color: var(--text-muted);">
+    API 地址: <span id="apiBaseDisplay" style="color: var(--text-secondary);"></span>
+  </div>
+</div>
+
+<!-- ===== DASHBOARD ===== -->
+<div class="dashboard" id="dashboard">
+  <div class="dash-header">
+    <h2>用户管理</h2>
+    <div class="user-badge">
+      <span style="color: var(--gold);" id="dashUsername"></span>
+      <button class="btn btn-ghost btn-sm" id="logoutBtn">退出</button>
+    </div>
+  </div>
+
+  <div class="stats-row" id="statsRow">
+    <div class="stat-card"><div class="stat-value" id="statUsers">-</div><div class="stat-label">注册用户</div></div>
+    <div class="stat-card"><div class="stat-value" id="statAdmins">-</div><div class="stat-label">管理员</div></div>
+    <div class="stat-card"><div class="stat-value" id="statSlots">-</div><div class="stat-label">剩余名额</div></div>
+  </div>
+
+  <div class="toolbar">
+    <input type="text" class="search-input" id="searchInput" placeholder="搜索用户名或邮箱...">
+    <button class="btn btn-primary btn-sm" id="addUserBtn">+ 创建用户</button>
+    <button class="btn btn-ghost btn-sm" id="refreshBtn">刷新</button>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th><th>用户名</th><th>邮箱</th><th>角色</th><th>注册时间</th><th>操作</th>
+        </tr>
+      </thead>
+      <tbody id="userTableBody"></tbody>
+    </table>
+    <div class="empty-state" id="emptyState" style="display:none;">暂无用户数据</div>
+  </div>
+</div>
+
+<!-- ===== CREATE/EDIT USER MODAL ===== -->
+<div class="modal-overlay" id="userModal">
+  <div class="modal">
+    <h3 id="modalTitle">创建用户</h3>
+    <div class="form-group">
+      <label>用户名</label>
+      <input type="text" id="modalUsername" placeholder="输入用户名">
+    </div>
+    <div class="form-group">
+      <label>邮箱（选填）</label>
+      <input type="email" id="modalEmail" placeholder="your@email.com">
+    </div>
+    <div class="form-group">
+      <label id="modalPwdLabel">密码</label>
+      <input type="password" id="modalPassword" placeholder="至少6位密码">
+    </div>
+    <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
+      <label style="margin: 0;">管理员权限</label>
+      <input type="checkbox" id="modalIsAdmin" style="accent-color: var(--gold);">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost btn-sm" id="modalCancel">取消</button>
+      <button class="btn btn-primary btn-sm" id="modalSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== CONFIG ===== -->
+<script>
+// ---- Config ----
+const API_BASE = localStorage.getItem('admin_api_base') || 'http://localhost:8000/api';
+document.getElementById('apiBaseDisplay').textContent = API_BASE.replace('/api', '');
+
+// ---- State ----
+let token = localStorage.getItem('admin_token') || '';
+let currentUser = null;
+let users = [];
+
+try {
+  const u = localStorage.getItem('admin_user');
+  if (u) currentUser = JSON.parse(u);
+} catch(e) {}
+
+// ---- Helpers ----
+const $ = (sel) => document.querySelector(sel);
+
+function showToast(msg) {
+  const existing = document.querySelector('.toast');
+  if (existing) existing.remove();
+  const t = document.createElement('div');
+  t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => { if (t.parentNode) t.remove(); }, 3000);
+}
+
+async function apiFetch(path, opts = {}) {
+  if (!opts.headers) opts.headers = {};
+  if (token) opts.headers['Authorization'] = 'Bearer ' + token;
+  opts.headers['Content-Type'] = 'application/json';
+  return fetch(API_BASE + path, opts);
+}
+
+// ---- Login ----
+$('#loginBtn').addEventListener('click', async () => {
+  const btn = $('#loginBtn');
+  const username = $('#loginUsername').value.trim();
+  const password = $('#loginPassword').value;
+  const errEl = $('#loginError');
+
+  if (!username || !password) { errEl.textContent = '请填写用户名和密码'; return; }
+  btn.disabled = true; btn.textContent = '登录中...'; errEl.textContent = '';
+
+  try {
+    const resp = await apiFetch('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password })
+    });
+    const data = await resp.json();
+    if (!resp.ok) { errEl.textContent = data.detail || '登录失败'; btn.disabled = false; btn.textContent = '登录管理后台'; return; }
+
+    if (!data.user.is_admin) {
+      errEl.textContent = '该账号不是管理员，无法登录后台';
+      btn.disabled = false; btn.textContent = '登录管理后台';
+      return;
+    }
+
+    token = data.access_token;
+    currentUser = data.user;
+    localStorage.setItem('admin_token', token);
+    localStorage.setItem('admin_user', JSON.stringify(currentUser));
+    showDashboard();
+  } catch(e) {
+    errEl.textContent = '无法连接服务器，请检查后端是否启动';
+    btn.disabled = false; btn.textContent = '登录管理后台';
+  }
+});
+
+$('#loginPassword').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') $('#loginBtn').click();
+});
+
+// ---- Dashboard ----
+function showDashboard() {
+  $('#loginCard').style.display = 'none';
+  $('#dashboard').style.display = 'block';
+  $('#dashUsername').textContent = currentUser.username;
+  loadUsers();
+}
+
+function showLogin() {
+  $('#loginCard').style.display = 'block';
+  $('#dashboard').style.display = 'none';
+  token = ''; currentUser = null;
+  localStorage.removeItem('admin_token');
+  localStorage.removeItem('admin_user');
+}
+
+$('#logoutBtn').addEventListener('click', showLogin);
+
+async function loadUsers() {
+  try {
+    const [usersResp, slotsResp, statsResp] = await Promise.all([
+      apiFetch('/admin/users'),
+      apiFetch('/auth/slots'),
+      apiFetch('/admin/stats').catch(() => null),
+    ]);
+
+    if (!usersResp.ok) {
+      if (usersResp.status === 401 || usersResp.status === 403) { showLogin(); return; }
+      showToast('加载用户失败');
+      return;
+    }
+
+    users = await usersResp.json();
+    const slots = await slotsResp.json();
+    const stats = statsResp ? await statsResp.json() : null;
+
+    $('#statUsers').textContent = users.length;
+    $('#statAdmins').textContent = users.filter(u => u.is_admin).length;
+    $('#statSlots').textContent = slots ? (slots.remaining + ' / ' + slots.total) : '-';
+
+    renderUserTable();
+  } catch(e) {
+    showToast('网络错误，请确保后端已启动');
+  }
+}
+
+function renderUserTable(filter = '') {
+  const tbody = $('#userTableBody');
+  const empty = $('#emptyState');
+  let filtered = users;
+  if (filter) {
+    const q = filter.toLowerCase();
+    filtered = users.filter(u => u.username.toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q));
+  }
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  tbody.innerHTML = filtered.map(u => `
+    <tr>
+      <td style="color:var(--text-muted);">${u.id}</td>
+      <td style="font-weight:500;">${escapeHTML(u.username)}</td>
+      <td style="color:var(--text-secondary);">${escapeHTML(u.email || '—')}</td>
+      <td><span class="badge ${u.is_admin ? 'badge-admin' : 'badge-user'}">${u.is_admin ? '管理员' : '用户'}</span></td>
+      <td style="color:var(--text-muted);">${(u.created_at || '').substring(0, 10)}</td>
+      <td>
+        <div class="action-btns">
+          <button class="btn btn-ghost btn-sm edit-btn" data-id="${u.id}" data-username="${escapeHTML(u.username)}" data-email="${escapeHTML(u.email || '')}" data-isadmin="${u.is_admin}">编辑</button>
+          <button class="btn btn-ghost btn-sm pwd-btn" data-id="${u.id}" data-username="${escapeHTML(u.username)}" style="color: var(--amber);">改密</button>
+          ${u.id !== (currentUser && currentUser.id) ? `<button class="btn btn-danger btn-sm del-btn" data-id="${u.id}" data-username="${escapeHTML(u.username)}">删除</button>` : ''}
+        </div>
+      </td>
+    </tr>
+  `).join('');
+
+  // Edit buttons
+  tbody.querySelectorAll('.edit-btn').forEach(b => {
+    b.addEventListener('click', () => openUserModal({
+      id: parseInt(b.dataset.id),
+      username: b.dataset.username,
+      email: b.dataset.email,
+      is_admin: b.dataset.isadmin === 'true',
+    }));
+  });
+
+  // Password reset buttons
+  tbody.querySelectorAll('.pwd-btn').forEach(b => {
+    b.addEventListener('click', () => resetPassword(parseInt(b.dataset.id), b.dataset.username));
+  });
+
+  // Delete buttons
+  tbody.querySelectorAll('.del-btn').forEach(b => {
+    b.addEventListener('click', () => deleteUser(parseInt(b.dataset.id), b.dataset.username));
+  });
+}
+
+$('#searchInput').addEventListener('input', (e) => renderUserTable(e.target.value));
+$('#refreshBtn').addEventListener('click', loadUsers);
+
+// ---- User Create / Edit Modal ----
+let editingUserId = null;
+
+function openUserModal(user = null) {
+  editingUserId = user ? user.id : null;
+  $('#modalTitle').textContent = user ? '编辑用户' : '创建用户';
+  $('#modalUsername').value = user ? user.username : '';
+  $('#modalEmail').value = user ? user.email : '';
+  $('#modalPassword').value = '';
+  $('#modalIsAdmin').checked = user ? user.is_admin : false;
+  $('#modalPwdLabel').textContent = user ? '新密码（留空则不修改）' : '密码';
+  $('#modalPassword').placeholder = user ? '留空则不修改...' : '至少6位密码';
+  $('#userModal').classList.add('active');
+  setTimeout(() => $('#modalUsername').focus(), 100);
+}
+
+function closeUserModal() {
+  $('#userModal').classList.remove('active');
+  editingUserId = null;
+}
+
+$('#modalCancel').addEventListener('click', closeUserModal);
+$('#userModal').addEventListener('click', (e) => {
+  if (e.target === $('#userModal')) closeUserModal();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && $('#userModal').classList.contains('active')) closeUserModal();
+});
+
+$('#modalSave').addEventListener('click', async () => {
+  const btn = $('#modalSave');
+  const username = $('#modalUsername').value.trim();
+  const email = $('#modalEmail').value.trim();
+  const password = $('#modalPassword').value;
+  const isAdmin = $('#modalIsAdmin').checked;
+
+  if (!username) { showToast('请填写用户名'); return; }
+  if (!editingUserId && !password) { showToast('请填写密码'); return; }
+  if (password && password.length < 6) { showToast('密码至少6位'); return; }
+
+  btn.disabled = true; btn.textContent = '保存中...';
+
+  try {
+    let resp;
+    if (editingUserId) {
+      const body = {};
+      if (email !== (users.find(u => u.id === editingUserId) || {}).email) body.email = email;
+      if (password) body.password = password;
+      body.is_admin = isAdmin;
+      resp = await apiFetch('/auth/users/' + editingUserId, { method: 'PUT', body: JSON.stringify(body) });
+    } else {
+      resp = await apiFetch('/admin/users', {
+        method: 'POST',
+        body: JSON.stringify({ username, email, password, is_admin: isAdmin })
+      });
+    }
+
+    if (!resp.ok) {
+      const err = await resp.json();
+      showToast(err.detail || '操作失败');
+      btn.disabled = false; btn.textContent = '保存';
+      return;
+    }
+
+    showToast(editingUserId ? '用户已更新' : '用户已创建');
+    closeUserModal();
+    loadUsers();
+  } catch(e) {
+    showToast('网络错误');
+    btn.disabled = false; btn.textContent = '保存';
+  }
+});
+
+$('#addUserBtn').addEventListener('click', () => openUserModal());
+
+// ---- Reset Password ----
+async function resetPassword(id, username) {
+  const newPwd = prompt('为「' + username + '」设置新密码（至少6位）：');
+  if (!newPwd) return;
+  if (newPwd.length < 6) { showToast('密码至少6位'); return; }
+
+  try {
+    const resp = await apiFetch('/auth/users/' + id, {
+      method: 'PUT',
+      body: JSON.stringify({ password: newPwd })
+    });
+    if (resp.ok) {
+      showToast('「' + username + '」的密码已重置');
+    } else {
+      const err = await resp.json();
+      showToast(err.detail || '重置失败');
+    }
+  } catch(e) {
+    showToast('网络错误');
+  }
+}
+
+// ---- Delete User ----
+async function deleteUser(id, username) {
+  if (!confirm('确认删除用户「' + username + '」？\n\n该操作不可撤销，用户的行程数据也将被删除。')) return;
+
+  try {
+    const resp = await apiFetch('/auth/users/' + id, { method: 'DELETE' });
+    if (resp.ok) {
+      showToast('用户「' + username + '」已删除');
+      loadUsers();
+    } else {
+      const err = await resp.json();
+      showToast(err.detail || '删除失败');
+    }
+  } catch(e) {
+    showToast('网络错误');
+  }
+}
+
+function escapeHTML(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ---- Init ----
+if (token && currentUser && currentUser.is_admin) {
+  showDashboard();
+} else {
+  showLogin();
+}
+</script>
+</body>
+</html>
