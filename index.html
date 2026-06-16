@@ -2344,6 +2344,13 @@ body::before {
 .scenario-btn:hover { border-color: var(--gold); color: var(--gold); }
 .scenario-btn.active { background: rgba(201, 164, 75, 0.15); border-color: var(--gold); color: var(--gold); }
 
+/* Theme Tags */
+.theme-tags { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; align-items: center; max-width: 680px; margin: 0 auto 12px; animation: fade-in-up 0.8s var(--ease-out-expo) 0.55s both; }
+.theme-label { font-size: 0.6875rem; color: var(--text-muted); margin-right: 2px; }
+.theme-tag { padding: 4px 10px; border-radius: 14px; font-size: 0.6875rem; font-weight: 500; background: var(--bg-deep); color: var(--text-muted); border: 1px solid var(--border-subtle); cursor: pointer; transition: all var(--duration-fast); font-family: var(--font-body); white-space: nowrap; }
+.theme-tag:hover { border-color: var(--copper); color: var(--copper-bright); background: rgba(201, 122, 91, 0.08); }
+.theme-tag.active { background: rgba(201, 122, 91, 0.12); border-color: var(--copper); color: var(--copper-bright); }
+
 /* Chat Interface */
 .chat-container { animation: fade-in-up 0.8s var(--ease-out-expo) 0.65s both; max-width: 680px; margin: 0 auto; background: var(--bg-surface); border-radius: var(--radius-xl); border: 1px solid var(--border-subtle); overflow: hidden; display: flex; flex-direction: column; height: 520px; }
 .chat-messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
@@ -2478,12 +2485,29 @@ body::before {
 
     <!-- Scenario Quick Select -->
     <div class="scenario-bar" id="scenarioBar">
-      <button class="scenario-btn active" data-style="智能推荐">✨ 智能推荐</button>
-      <button class="scenario-btn" data-style="背包穷游">🎒 背包穷游</button>
-      <button class="scenario-btn" data-style="舒适休闲">🌿 舒适休闲</button>
-      <button class="scenario-btn" data-style="奢华体验">👑 奢华体验</button>
-      <button class="scenario-btn" data-style="亲子家庭">👨‍👩‍👧 亲子家庭</button>
-      <button class="scenario-btn" data-style="周末短途">🚗 周末短途</button>
+      <button class="scenario-btn active" data-style="智能推荐" title="AI 根据你的偏好综合推荐">✨ 智能推荐</button>
+      <button class="scenario-btn" data-style="背包穷游" title="预算优先，高性价比青旅+公共交通">🎒 背包穷游</button>
+      <button class="scenario-btn" data-style="舒适休闲" title="气候温和、节奏慢、适合放松">🌿 舒适休闲</button>
+      <button class="scenario-btn" data-style="奢华体验" title="高端酒店、米其林美食、私人定制">👑 奢华体验</button>
+      <button class="scenario-btn" data-style="亲子家庭" title="亲子友好、安全便利、寓教于乐">👨‍👩‍👧 亲子家庭</button>
+      <button class="scenario-btn" data-style="周末短途" title="高铁2小时圈、2-3天短途周边游">🚗 周末短途</button>
+      <button class="scenario-btn" data-style="户外探险" title="徒步登山、露营、自然探险">🏔 户外探险</button>
+      <button class="scenario-btn" data-style="美食之旅" title="以吃为核心，追寻地道风味">🍜 美食之旅</button>
+    </div>
+
+    <!-- Theme Tag Filter -->
+    <div class="theme-tags" id="themeTags">
+      <span class="theme-label">热门主题：</span>
+      <button class="theme-tag" data-theme="古镇">🏘 古镇</button>
+      <button class="theme-tag" data-theme="赏花">🌸 赏花</button>
+      <button class="theme-tag" data-theme="温泉">♨ 温泉</button>
+      <button class="theme-tag" data-theme="滑雪">⛷ 滑雪</button>
+      <button class="theme-tag" data-theme="海岛">🏝 海岛</button>
+      <button class="theme-tag" data-theme="避暑">🌊 避暑</button>
+      <button class="theme-tag" data-theme="红叶">🍁 红叶</button>
+      <button class="theme-tag" data-theme="摄影">📷 摄影</button>
+      <button class="theme-tag" data-theme="自驾">🚙 自驾</button>
+      <button class="theme-tag" data-theme="研学">📚 研学</button>
     </div>
 
     <!-- AI Chat Interface -->
@@ -3865,6 +3889,8 @@ function computeRecommendations(profile) {
     if (style === '奢华体验') { wScenicAdj += 0.05; wBudgetAdj -= 0.05; }
     if (style === '亲子家庭') { wTraffic += 0.05; wCrowdAdj += 0.05; wAQI += 0.03; }
     if (style === '周末短途') { wBudgetAdj += 0.03; wTraffic += 0.1; wCrowdAdj -= 0.02; }
+    if (style === '户外探险') { wScenicAdj += 0.08; wCrowdAdj -= 0.05; wClimate += 0.05; }
+    if (style === '美食之旅') { wInterest += 0.1; wBudgetAdj += 0.03; wCrowdAdj += 0.03; }
 
     // Boost niche destinations for "户外探险" or "自然风光" interests
     let nicheBoost = 0;
@@ -4164,6 +4190,16 @@ confidence 是 0-100 的匹配度评分，rank 从 1 开始递增，matchReasons
     { icon: '&#127809;', text: '想看红叶，秋天去哪里？' },
     { icon: '&#127938;', text: '推荐冬季滑雪温泉的组合' },
     { icon: '&#127958;', text: '想去有海的城市放松几天' },
+    { icon: '&#128690;', text: '高铁2小时圈，推荐周末周边游' },
+    { icon: '&#127794;', text: '推荐最美自驾公路沿途目的地' },
+    { icon: '&#127979;', text: '推荐博物馆和历史遗迹丰富的城市' },
+    { icon: '&#127779;', text: '五一/十一有什么避开人潮的好去处？' },
+    { icon: '&#128064;', text: '推荐本地人才知道的冷门宝藏地' },
+    { icon: '&#127881;', text: '推荐有特色节庆和民俗活动的城市' },
+    { icon: '&#127836;', text: '为了吃值得专程去一趟的美食之城' },
+    { icon: '&#127889;', text: '烟花三月下扬州，春季江南推荐' },
+    { icon: '&#128052;', text: '推荐可以看到野生动物的自然保护区' },
+    { icon: '&#127917;', text: '推荐适合写生和摄影的绝美景点' },
   ];
 
   function shuffleArray(arr) {
@@ -5443,6 +5479,8 @@ $('#scenarioBar').querySelectorAll('.scenario-btn').forEach(btn => {
       '奢华体验': ['顶级酒店+米其林美食之旅', '私人定制高端线路推荐', '头等舱+五星酒店目的地'],
       '亲子家庭': ['带娃友好城市推荐', '有动物园和主题乐园的城市', '亲子研学旅行目的地'],
       '周末短途': ['上海周边2日游推荐', '北京周末自驾去处', '高铁2小时直达的短途旅行'],
+      '户外探险': ['推荐适合徒步登山的自然景区', '有峡谷漂流和攀岩的目的地', '雪山草原户外探险路线'],
+      '美食之旅': ['为了吃值得专程去的城市', '有特色早茶文化和夜市的城市', '推荐本地人爱去的美食天堂'],
     };
     const prompts = scenarioPrompts[currentScenario] || scenarioPrompts['智能推荐'];
     const container = $('#chatSuggestions');
@@ -5463,6 +5501,41 @@ $('#scenarioBar').querySelectorAll('.scenario-btn').forEach(btn => {
       });
     });
     showToast('已切换到：' + currentScenario);
+  });
+});
+
+// Theme tag clicks — inject into chat input
+let activeTheme = '';
+$('#themeTags').querySelectorAll('.theme-tag').forEach(tag => {
+  tag.addEventListener('click', () => {
+    const theme = tag.dataset.theme;
+    if (activeTheme === theme) {
+      tag.classList.remove('active');
+      activeTheme = '';
+    } else {
+      $('#themeTags').querySelectorAll('.theme-tag').forEach(t => t.classList.remove('active'));
+      tag.classList.add('active');
+      activeTheme = theme;
+    }
+    // Generate a themed search prompt
+    if (activeTheme) {
+      const themePrompts = {
+        '古镇': '推荐有古建筑和古镇风貌的目的地',
+        '赏花': '推荐春天赏花最出名的城市',
+        '温泉': '推荐有天然温泉的休闲度假城市',
+        '滑雪': '推荐冬季可以滑雪的旅游目的地',
+        '海岛': '推荐有海岛沙滩和海鲜美食的城市',
+        '避暑': '推荐夏天凉爽适合避暑的地方',
+        '红叶': '推荐秋天赏红叶的最佳目的地',
+        '摄影': '推荐拍照出片的网红打卡城市',
+        '自驾': '推荐适合自驾游的风景线路和目的地',
+        '研学': '推荐历史文化深厚适合研学的城市',
+      };
+      const prompt = themePrompts[activeTheme] || ('推荐' + activeTheme + '主题的旅行目的地');
+      const input = $('#chatInput');
+      const sendBtn = $('#chatSendBtn');
+      if (input) { input.value = prompt; input.focus(); }
+    }
   });
 });
 
